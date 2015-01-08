@@ -26,18 +26,11 @@
       (when pixel-requests
         (go-loop []
           (let [[x y w h response] (<! pixel-requests)]
-            (time (let [imagedata (time (-> (om/get-node owner "canvas")
-                                       (.getContext "2d")
-                                       (.getImageData x y w h)
-                                       .-data ))]
-                    (println "Grabbed imagedata")
-                    (let [rgbas (array-seq imagedata)
-                          ;; Consumers will appreciate it if you give them a
-                          ;; fast-lookup data structure
-                          pixels (vec (partition 4 rgbas))
-                          rows (vec (partition w pixels))]
-                      (put! response rows))))
-            (println "Gathered a layer's pixels"))
+            (put! response (-> (om/get-node owner "canvas")
+                               (.getContext "2d")
+                               (.getImageData x y w h)
+                               .-data
+                               array-seq)))
           (recur))))
 
     om/IDidMount
@@ -54,6 +47,12 @@
                        :width width :height height
                        :style (clj->js style)}))))
 
+(defn weighted-average [a wa b wb]
+  ;; TODO stop the sneaky rounding
+  (let [sum (+ wa wb)]
+    (js/Math.round (+ (* a (/ wa sum))
+                      (* b (/ wb sum))))))
+
 ;; TODO - Expose access to pixels (probably using a channel-based API)
 (defn layered-canvas [data owner {:keys [layers width height pixel-requests]}]
   (reify
@@ -69,68 +68,61 @@
           (let [child-requests (om/get-state owner :child-requests)
                 [x y w h pixel-response] (<! pixel-requests)]
             ;; TODO call in order of zIndex
-            ;; Must go from back to front.
 
-            ;; Here I want to reduce over the bitmaps.
             ;; V1 - Assume nothing is offset.
-            ;; The reducing function should grab the pixels for one layer,
-            ;; then add it to the background.
-            ;; Put a value on channel 1a. Retrieve a value from channel 1b.
-            ;; Return the background.
-            ;; Put a value on channel 2a. Retrieve a value from channel 2b.
-            ;; Return the background.
-            ;; ...
-            ;; So how do you `reduce` in a channel world?
-            ;; I have a vector of channels.
-            ;; You could just `doseq` and use an atom.
             ;; Afterward, write the reduce function that you wish you had.
 
-            (let [background (atom nil)]
-              (time (doseq [child child-requests
-                       :let [response (chan)]]
-                 (put! child [x y w h response])
+            ;; This code is terrible. I could write a core.async-compatible `reduce`.
+            ;; Or I could explore channels more and find if there's a way to make
+            ;; them do what I want.
 
-                 (let [foreground (<! response)]
-                   (time (swap! background
-                                (fn [background]
-                                  ;; Consumers will appreciate it if you give them a
-                                  ;; fast-lookup data structure
-                                  ;; TODO verify that the vecs truly are necessary
-                                  (if (not background)
-                                    foreground
-                                    (vec
-                                     (for [y (range (max (count background)
-                                                         (count foreground)))]
-                                       (vec
-                                        (for [x (range (max (count (first background))
-                                                            (count (first foreground))))
-                                              :let [[fr fg fb fa :as f] (-> foreground (nth y) (nth x))
-                                                    [br bg bb ba :as b] (when-not (= fa 255)
-                                                                          (-> background (nth y) (nth x)))]]
-                                          (cond
-                                           (and b f)
-                                           (let [fopacity (/ fa 255)
-                                                 bopacity (/ ba 255)
-                                                 ftransparency (- 1 fopacity)
-                                                 btransparency (- 1 bopacity)
-                                                 final-transparency (* ftransparency
-                                                                       btransparency)
-                                                 final-opacity (- 1 final-transparency)
-                                                 fweight fopacity
-                                                 bweight (- 1 fopacity)]
-                                             [(+ (* fr fweight) (* br bweight))
-                                              (+ (* fg fweight) (* bg bweight))
-                                              (+ (* fb fweight) (* bb bweight))
-                                              (* final-opacity 255)])
+            ;; First order of business is perf, though.
 
-                                           (or b f)
-                                           (or b f)
-
-                                           :else
-                                           (throw :wtf))))))))))
-                   (println "Swapped background"))))
-              (println "Finished calculating pixels")
-              (put! pixel-response @background)))
+            (loop [child-index 0
+                   pixels nil]
+              (if-not (< child-index (count child-requests))
+                (when pixels
+                  (put! pixel-response (persistent! pixels)))
+                (let [child (nth child-requests child-index)
+                      response (chan)]
+                  (put! child [x y w h response])
+                  (let [foreground (<! response)]
+                    (recur
+                     (inc child-index)
+                     (if-not pixels
+                       (transient (vec foreground))
+                       (loop [pxi 0
+                              pixels pixels]
+                         (if-not (< pxi (count pixels))
+                           pixels
+                           (recur
+                            (+ pxi 4)
+                            (let [fa (nth foreground (+ pxi 3))]
+                              (if (= fa 0)
+                                pixels
+                                (let [ba (nth pixels (+ pxi 3))
+                                      fweight fa
+                                      bweight (- 255 fa)
+                                      fopacity (/ fa 255)
+                                      bopacity (/ ba 255)
+                                      ftransparency (- 1 fopacity)
+                                      btransparency (- 1 bopacity)
+                                      final-transparency (* ftransparency
+                                                            btransparency)
+                                      final-opacity (- 1 final-transparency)]
+                                  ;; Consider optimizing the case where the foreground is 255a
+                                  (assoc! pixels
+                                          pxi
+                                          (weighted-average (nth pixels pxi) bweight
+                                                            (nth foreground pxi) fweight)
+                                          (+ pxi 1)
+                                          (weighted-average (nth pixels (+ pxi 1)) bweight
+                                                            (nth foreground (+ pxi 1)) fweight)
+                                          (+ pxi 2)
+                                          (weighted-average (nth pixels (+ pxi 2)) bweight
+                                                            (nth foreground (+ pxi 2)) fweight)
+                                          (+ pxi 3)
+                                          (* final-opacity 255)))))))))))))))
           (recur))))
 
     om/IRenderState

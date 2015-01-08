@@ -35,7 +35,9 @@
                                                 :transition-radius])
                               {:opts {:pixel-requests illusion-pxs}})
             probe (om/build pixel-probe
-                            (select-keys app [:width :height :pixel-probe])
+                            ;; TODO why isn't it updating when transition-radius changes
+                            (select-keys app [:width :height :pixel-probe
+                                              :transition-radius])
                             {:opts {:pixel-requests illusion-pxs}})]
         (dom/div nil
                  (om/build layered-canvas app

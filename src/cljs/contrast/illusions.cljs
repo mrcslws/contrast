@@ -22,7 +22,7 @@
                                         [1 (grayscale 0)]))
     (cnv/fill-rect ctx w 0 w height
                    (cnv/linear-gradient ctx 0 0 0 height
-                                        [0 (grayscale 127)]
+                                        [0 (grayscale 128)]
                                         [1 (grayscale 255)]))))
 
 (defn paint-transition [{:keys [transition-radius]} cnv]
@@ -34,7 +34,7 @@
     (cnv/clear ctx)
     (doseq [row (range height)
             :let [left (grayscale (js/Math.round
-                                   (* 128 (- 1 (/ row height)))))
+                                   (* 127 (- 1 (/ row height)))))
                   right (grayscale (js/Math.round
                                     (* 128 (+ 1 (/ row height)))))]]
       (cnv/fill-rect ctx tx row tw 1
