@@ -47,13 +47,43 @@
                        :width width :height height
                        :style (clj->js style)}))))
 
-(defn weighted-average [a wa b wb]
-  ;; TODO stop the sneaky rounding
-  (let [sum (+ wa wb)]
-    (js/Math.round (+ (* a (/ wa sum))
-                      (* b (/ wb sum))))))
+(defn overlay [[br bg bb ba] [fr fg fb fa]]
+  (let [fopacity (/ fa 255)
+        bopacity (/ ba 255)
+        ftransparency (- 1 fopacity)
+        btransparency (- 1 bopacity)
+        final-opacity (- 1 (* ftransparency btransparency))]
+    [(js/Math.round (+ (* fr fopacity) (* br ftransparency)))
+     (js/Math.round (+ (* fg fopacity) (* bg ftransparency)))
+     (js/Math.round (+ (* fb fopacity) (* bb ftransparency)))
+     (js/Math.round (* final-opacity 255))]))
 
-;; TODO - Expose access to pixels (probably using a channel-based API)
+(defn nth-pixel [pixels n]
+  (subvec pixels (* 4 n) (* 4 (inc n))))
+
+(defn pixel-count [pixels]
+  (quot (count pixels) 4))
+
+(defn assoc-pixel! [pixels pxi [r g b a]]
+  (let [i (* 4 pxi)]
+    (assoc! pixels
+            i r
+            (+ i 1) g
+            (+ i 2) b
+            (+ i 3) a)))
+
+(defn transparent? [px]
+  (zero? (nth px 3)))
+
+(defn overlay-pixel! [foreground victim pxi]
+  (let [fpx (nth-pixel foreground pxi)]
+    (if (transparent? fpx)
+      victim
+      (assoc-pixel! victim pxi
+                    (overlay (nth-pixel
+                              victim pxi)
+                             fpx)))))
+
 (defn layered-canvas [data owner {:keys [layers width height pixel-requests]}]
   (reify
     om/IInitState
@@ -72,57 +102,31 @@
             ;; V1 - Assume nothing is offset.
             ;; Afterward, write the reduce function that you wish you had.
 
-            ;; This code is terrible. I could write a core.async-compatible `reduce`.
+            ;; I could write a core.async-compatible `reduce`.
             ;; Or I could explore channels more and find if there's a way to make
             ;; them do what I want.
 
             ;; First order of business is perf, though.
+            ;; Though I'll clean up stuff that'll remain useful regardless of data structure choice.
 
-            (loop [child-index 0
-                   pixels nil]
-              (if-not (< child-index (count child-requests))
-                (when pixels
-                  (put! pixel-response (persistent! pixels)))
-                (let [child (nth child-requests child-index)
-                      response (chan)]
-                  (put! child [x y w h response])
-                  (let [foreground (<! response)]
-                    (recur
-                     (inc child-index)
-                     (if-not pixels
-                       (transient (vec foreground))
-                       (loop [pxi 0
-                              pixels pixels]
-                         (if-not (< pxi (count pixels))
-                           pixels
-                           (recur
-                            (+ pxi 4)
-                            (let [fa (nth foreground (+ pxi 3))]
-                              (if (= fa 0)
-                                pixels
-                                (let [ba (nth pixels (+ pxi 3))
-                                      fweight fa
-                                      bweight (- 255 fa)
-                                      fopacity (/ fa 255)
-                                      bopacity (/ ba 255)
-                                      ftransparency (- 1 fopacity)
-                                      btransparency (- 1 bopacity)
-                                      final-transparency (* ftransparency
-                                                            btransparency)
-                                      final-opacity (- 1 final-transparency)]
-                                  ;; Consider optimizing the case where the foreground is 255a
-                                  (assoc! pixels
-                                          pxi
-                                          (weighted-average (nth pixels pxi) bweight
-                                                            (nth foreground pxi) fweight)
-                                          (+ pxi 1)
-                                          (weighted-average (nth pixels (+ pxi 1)) bweight
-                                                            (nth foreground (+ pxi 1)) fweight)
-                                          (+ pxi 2)
-                                          (weighted-average (nth pixels (+ pxi 2)) bweight
-                                                            (nth foreground (+ pxi 2)) fweight)
-                                          (+ pxi 3)
-                                          (* final-opacity 255)))))))))))))))
+            (time
+             ;; Use `loop` rather than `reduce` because the reducing function
+             ;; consumes a channel.
+
+             (put! pixel-response
+                   (loop [pixels (transient [])
+                          remaining-children child-requests]
+                     (when (not-empty remaining-children)
+                       (recur (let [response (chan)]
+                                (put! (first remaining-children) [x y w h response])
+                                (let [foreground (<! response)]
+                                  (if (zero? (count pixels))
+                                    (reduce conj! pixels foreground)
+                                    (reduce (partial overlay-pixel! foreground)
+                                            pixels (range (pixel-count pixels))))))
+                              (rest remaining-children)))
+                     (persistent! pixels))))
+            (println "Finished combining layers"))
           (recur))))
 
     om/IRenderState

@@ -17,9 +17,9 @@
 ;;                                              :pixel-probe {}}}}))
 
 (defonce app-state
-  (atom {:width 50
-         :height 50
-         :transition-radius 10
+  (atom {:width 200
+         :height 200
+         :transition-radius 30
          :pixel-probe {}}))
 
 (defn conjurer [app owner]
