@@ -31,6 +31,19 @@
                        :width width :height height
                        :style (clj->js style)}))))
 
+(defn overlay-all! [victim foreground]
+  (if-not victim
+    foreground
+    (let [len (pixel/pixel-count victim)
+          v (pixel/nth! victim 0)]
+      (loop [i 0
+             f (pixel/nth! foreground i)]
+        (when (< i len)
+          (when-not (pixel/transparent? f)
+            (pixel/overlay! (pixel/transport! v i) f))
+          (recur (inc i) (pixel/pan! f 1))))
+      victim)))
+
 (defn layered-canvas [data owner {:keys [layers width height pixel-requests]}]
   (reify
     om/IInitState
@@ -53,30 +66,17 @@
             ;; Or I could explore channels more and find if there's a way to make
             ;; them do what I want.
 
-            (time
              ;; Use `loop` rather than `reduce` because the reducing function
              ;; consumes a channel.
-
-             (put! pixel-response
-                   (loop [imagedata nil
-                          remaining-children child-requests]
-                     (when (not-empty remaining-children)
-                       (recur (let [response (chan)]
-                                (put! (first remaining-children) [x y w h response])
-                                (let [foreground (<! response)]
-                                  (if-not imagedata
-                                    foreground
-                                    (do
-                                      (reduce (fn [imagedata i]
-                                                (let [front (pixel/nth! foreground i)]
-                                                  (when-not (pixel/transparent? front)
-                                                    (pixel/overlay! (pixel/nth! imagedata i) front))
-                                                  imagedata))
-                                              imagedata
-                                              (range (pixel/pixel-count imagedata)))))))
-                              (rest remaining-children)))
-                     imagedata)))
-            (println "Finished combining layers"))
+            (put! pixel-response
+                  (loop [imagedata nil
+                         remaining-children child-requests]
+                    (when (not-empty remaining-children)
+                      (recur (let [response (chan)]
+                               (put! (first remaining-children) [x y w h response])
+                               (overlay-all! imagedata (<! response)))
+                             (rest remaining-children)))
+                    imagedata)))
           (recur))))
 
     om/IRenderState

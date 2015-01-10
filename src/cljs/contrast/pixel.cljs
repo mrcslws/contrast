@@ -1,22 +1,6 @@
 (ns contrast.pixel
   (:refer-clojure :exclude [nth count]))
 
-(def ^dynamic *stats* nil)
-(defn bump-count! [k]
-  (when *stats*
-    (swap! *stats* update-in [k] inc)))
-
-  ;; The next step is to stop allocating an object every loop.
-  ;; I should still use something like `MutablePixel`, but have
-  ;; it be a moving lens. So, yes, an iterator of sorts.
-
-  ;; Options:
-  ;;   (deftype PixelPointer [base]
-  ;;     PPixelPointer
-  ;;     (pan! [distance]))
-  ;;
-
-
 (defprotocol PPixel
   (r [this])
   (g [this])
@@ -24,7 +8,8 @@
   (a [this]))
 
 (defprotocol PPixelCamera
-  (pan! [this distance]))
+  (pan! [this distance])
+  (transport! [this position]))
 
 (defprotocol PMutablePixel
   (overlay! [this foreground])
@@ -61,6 +46,9 @@
   PPixelCamera
   (pan! [this distance]
     (set! base (+ base (* distance 4)))
+    this)
+  (transport! [this position]
+    (set! base (* position 4))
     this)
 
   PMutablePixel

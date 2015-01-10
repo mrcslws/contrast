@@ -26,15 +26,13 @@
 (defn paint2 [ctx imagedata x y w h]
   (cnv/clear ctx)
   (let [selected (pixel/xyth! imagedata x y)]
-    (time
-     (let [len (pixel/pixel-count imagedata)]
-       (loop [i 0
-              px (pixel/nth! imagedata i)]
-         (when (< i len)
-           (when (pixel/matches? px selected)
-             (cnv/fill-rect ctx (rem i w) (quot i w) 1 1 "blue"))
-           (recur (inc i) (pixel/pan! px 1)))))))
-  (println "Finished comparing."))
+    (let [len (pixel/pixel-count imagedata)]
+      (loop [i 0
+             px (pixel/nth! imagedata i)]
+        (when (< i len)
+          (when (pixel/matches? px selected)
+            (cnv/fill-rect ctx (rem i w) (quot i w) 1 1 "blue"))
+          (recur (inc i) (pixel/pan! px 1)))))))
 
 (defn paint [data owner requests]
   (let [y (-> data :pixel-probe :row)
