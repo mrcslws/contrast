@@ -25,18 +25,15 @@
 
 (defn paint2 [ctx imagedata x y w h]
   (cnv/clear ctx)
-  ;; Comparing is still about 1.5* as slow as combining layers.
-  ;; But combining requires reading every pixel of the foreground,
-  ;; and some pixels of the background. Comparing should be faster
-  ;; than combining.
-  (let [currentpx (pixel/xyth! imagedata x y)]
+  (let [selected (pixel/xyth! imagedata x y)]
     (time
      (let [len (pixel/pixel-count imagedata)]
-       (loop [i 0]
+       (loop [i 0
+              px (pixel/nth! imagedata i)]
          (when (< i len)
-           (when (pixel/matches? (pixel/nth! imagedata i) currentpx)
+           (when (pixel/matches? px selected)
              (cnv/fill-rect ctx (rem i w) (quot i w) 1 1 "blue"))
-           (recur (inc i)))))))
+           (recur (inc i) (pixel/pan! px 1)))))))
   (println "Finished comparing."))
 
 (defn paint [data owner requests]
@@ -49,6 +46,7 @@
       (let [response (chan)]
         (put! requests [0 0 w h response])
         (go
+          ;; `go` sabotages loop performance
           (paint2 ctx (<! response) x y w h))))))
 
 (defn pixel-probe [data owner {:keys [pixel-requests]}]

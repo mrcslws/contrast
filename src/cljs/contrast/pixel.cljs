@@ -6,11 +6,25 @@
   (when *stats*
     (swap! *stats* update-in [k] inc)))
 
+  ;; The next step is to stop allocating an object every loop.
+  ;; I should still use something like `MutablePixel`, but have
+  ;; it be a moving lens. So, yes, an iterator of sorts.
+
+  ;; Options:
+  ;;   (deftype PixelPointer [base]
+  ;;     PPixelPointer
+  ;;     (pan! [distance]))
+  ;;
+
+
 (defprotocol PPixel
   (r [this])
   (g [this])
   (b [this])
   (a [this]))
+
+(defprotocol PPixelCamera
+  (pan! [this distance]))
 
 (defprotocol PMutablePixel
   (overlay! [this foreground])
@@ -37,12 +51,17 @@
   (b [_] b*)
   (a [_] a*))
 
-(deftype MutablePixel [arr base]
+(deftype PixelPointer [arr ^:volatile-mutable base]
   PPixel
-  (r [_] (aget arr base))
-  (g [_] (aget arr (+ base 1)))
-  (b [_] (aget arr (+ base 2)))
-  (a [_] (aget arr (+ base 3)))
+  (r [this] (aget arr base))
+  (g [this] (aget arr (+ base 1)))
+  (b [this] (aget arr (+ base 2)))
+  (a [this] (aget arr (+ base 3)))
+
+  PPixelCamera
+  (pan! [this distance]
+    (set! base (+ base (* distance 4)))
+    this)
 
   PMutablePixel
   (overlay! [this foreground]
@@ -71,7 +90,7 @@
 (extend-type js/ImageData
   PMutablePixelArray
   (nth! [this n]
-    (MutablePixel. (.-data this) (* n 4)))
+    (PixelPointer. (.-data this) (* n 4)))
 
   (xyth! [this x y]
     (nth! this (-> y (* (.-width this)) (+ x))))
