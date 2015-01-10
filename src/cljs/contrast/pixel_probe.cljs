@@ -5,7 +5,8 @@
             [contrast.slider :refer [slider]]
             [contrast.canvas :as cnv]
             [contrast.illusions :as illusions]
-            [contrast.layeredcanvas :refer [layered-canvas]])
+            [contrast.layeredcanvas :refer [layered-canvas]]
+            [contrast.pixel :as pixel])
   (:require-macros [cljs.core.async.macros :refer [go go-loop alt!]]))
 
 (defn offset-from-target [evt]
@@ -22,41 +23,33 @@
 ;;     (when row
 ;;       (cnv/fill-rect ctx 0 row (.-width cnv) 1 "red"))))
 
+(defn paint2 [ctx imagedata x y w h]
+  (cnv/clear ctx)
+  ;; Comparing is still about 1.5* as slow as combining layers.
+  ;; But combining requires reading every pixel of the foreground,
+  ;; and some pixels of the background. Comparing should be faster
+  ;; than combining.
+  (let [currentpx (pixel/xyth! imagedata x y)]
+    (time
+     (let [len (pixel/pixel-count imagedata)]
+       (loop [i 0]
+         (when (< i len)
+           (when (pixel/matches? (pixel/nth! imagedata i) currentpx)
+             (cnv/fill-rect ctx (rem i w) (quot i w) 1 1 "blue"))
+           (recur (inc i)))))))
+  (println "Finished comparing."))
+
 (defn paint [data owner requests]
-  (let [row (-> data :pixel-probe :row)
-        col (-> data :pixel-probe :col)
+  (let [y (-> data :pixel-probe :row)
+        x (-> data :pixel-probe :col)
         w (:width data)
         h (:height data)
-        cnv (om/get-node owner "canvas")
-        ctx (.getContext cnv "2d")]
-    (when (and row col)
+        ctx (.getContext (om/get-node owner "canvas") "2d")]
+    (when (and x y)
       (let [response (chan)]
         (put! requests [0 0 w h response])
         (go
-          (let [pixels (<! response)]
-            (cnv/clear ctx)
-
-            ;; (time (let [pixels (time (vec (partition 4 pixelbits)))
-            ;;             currenti (+ (* row w) col)
-            ;;             currentpx (vec (nth pixels (+ (* row w) col)))]
-            ;;         ;; TODO is partition bad for perf?
-            ;;         (doseq [i (range (count pixels))
-            ;;                 :let [thispx (vec (nth pixels i))]
-            ;;                 :when (= currentpx thispx)]
-            ;;           (cnv/fill-rect ctx (rem i w) (quot i w) 1 1 "blue"))))
-
-            ;; So slow! A vec of pixels, or a vec of seqs of pixels (i.e. rows).
-            ;; Too slow. Is there a way to make my own partition fn / macro?
-            ;; (time (let [rows (vec (partition w (partition 4 pixels)))]))
-            ;; (println "Trying partition")
-
-            (time (let [currenti (* 4 (+ (* row w) col))
-                        currentpx (subvec pixels currenti (+ currenti 4)) ]
-                    (doseq [i (range 0 (count pixels) 4)
-                            :let [actual-i (quot i 4)]
-                            :when (= currentpx (subvec pixels i (+ i 4)))]
-                      (cnv/fill-rect ctx (rem actual-i w) (quot actual-i w) 1 1 "blue"))))
-            (println "Finished comparing")))))))
+          (paint2 ctx (<! response) x y w h))))))
 
 (defn pixel-probe [data owner {:keys [pixel-requests]}]
   (reify
@@ -87,5 +80,4 @@
                                       (fn [c]
                                         (assoc c
                                           :row (-> % offset-from-target :y)
-                                          :col (-> % offset-from-target :x))))}
-                  ))))
+                                          :col (-> % offset-from-target :x))))}))))

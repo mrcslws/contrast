@@ -2,12 +2,13 @@
   (:require [om.core :as om :include-macros true]
             [om.dom :as dom :include-macros true]
             [cljs.core.async :refer [put! chan mult tap close! <!]]
-            [contrast.slider :refer [slider]]
             [contrast.canvas :as cnv]
+            [contrast.slider :refer [slider]]
             [contrast.illusions :as illusions]
             [contrast.pixel-probe :refer [pixel-probe]]
             [contrast.layeredcanvas :refer [layered-canvas]])
     (:require-macros [cljs.core.async.macros :refer [go go-loop alt!]]))
+
 
 ;; Potential improvement:
 ;; (defonce app-state
@@ -17,9 +18,9 @@
 ;;                                              :pixel-probe {}}}}))
 
 (defonce app-state
-  (atom {:width 200
-         :height 200
-         :transition-radius 30
+  (atom {:width 600
+         :height 600
+         :transition-radius 50
          :pixel-probe {}}))
 
 (defn conjurer [app owner]
