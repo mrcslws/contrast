@@ -42,12 +42,12 @@
                                           [0 left]
                                           [1 right])))))
 
-(defn single-linear-gradient [config owner {:keys [pixel-requests]}]
+(defn single-linear-gradient [config owner {:keys [subscriber]}]
   (reify
     om/IRender
     (render [_]
       (om/build layered-canvas (select-keys config [:transition-radius])
-                {:opts {:pixel-requests pixel-requests
+                {:opts {:subscriber subscriber
                         :width (:width config)
                         :height (:height config)
                         :layers [{:fpaint paint-two-halves

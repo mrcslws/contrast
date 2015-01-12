@@ -23,47 +23,43 @@
 ;;     (when row
 ;;       (cnv/fill-rect ctx 0 row (.-width cnv) 1 "red"))))
 
-(defn paint2 [ctx imagedata x y w h]
-  (cnv/clear ctx)
-  (let [selected (pixel/xyth! imagedata x y)]
-    (let [len (pixel/pixel-count imagedata)]
-      (loop [i 0
-             px (pixel/nth! imagedata i)]
-        (when (< i len)
-          (when (pixel/matches? px selected)
-            (cnv/fill-rect ctx (rem i w) (quot i w) 1 1 "blue"))
-          (recur (inc i) (pixel/pan! px 1)))))))
-
-(defn paint [data owner requests]
-  (let [y (-> data :pixel-probe :row)
+(defn paint [data owner]
+  (let [ctx (.getContext (om/get-node owner "canvas") "2d")
+        y (-> data :pixel-probe :row)
         x (-> data :pixel-probe :col)
-        w (:width data)
-        h (:height data)
-        ctx (.getContext (om/get-node owner "canvas") "2d")]
-    (when (and x y)
-      (let [response (chan)]
-        (put! requests [0 0 w h response])
-        (go
-          ;; `go` sabotages loop performance
-          (paint2 ctx (<! response) x y w h))))))
+        imagedata (om/get-state owner :imagedata)]
+    (cnv/clear ctx)
+    (when (and x y imagedata)
+      (let [w (:width data)
+            selected (pixel/xyth! imagedata x y)]
+        (let [len (pixel/pixel-count imagedata)]
+          (loop [i 0
+                 px (pixel/nth! imagedata i)]
+            (when (< i len)
+              (when (pixel/matches? px selected)
+                (cnv/fill-rect ctx (rem i w) (quot i w) 1 1 "blue"))
+              (recur (inc i) (pixel/pan! px 1)))))))))
 
-(defn pixel-probe [data owner {:keys [pixel-requests]}]
+(defn pixel-probe [data owner {:keys [updates]}]
   (reify
+    om/IWillMount
+    (will-mount [_]
+      (go-loop []
+        (om/set-state! owner :imagedata (<! updates))))
 
     om/IDidMount
     (did-mount [_]
-      (paint data owner pixel-requests))
+      (paint data owner))
 
     om/IDidUpdate
     (did-update [_ _ _]
-      (paint data owner pixel-requests))
+      (paint data owner))
 
     om/IRender
     (render [_]
       (dom/canvas #js {:width (:width data) :height (:height data)
-                       ;; TODO better :zIndex
                        :style #js {:position "absolute"
-                                   :left 0 :top 0 :zIndex 10}
+                                   :left 0 :top 0}
                        :ref "canvas"
                        :onMouseLeave #(om/transact!
                                       (:pixel-probe data)

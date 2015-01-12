@@ -1,35 +1,42 @@
 (ns contrast.layeredcanvas
   (:require [om.core :as om :include-macros true]
             [om.dom :as dom :include-macros true]
-            [cljs.core.async :refer [put! chan mult tap close! <!]]
+            [cljs.core.async :refer [put! chan mult tap close! <! pipeline]]
             [contrast.pixel :as pixel])
-  (:require-macros [cljs.core.async.macros :refer [go go-loop alt!]]))
+  (:require-macros [cljs.core.async.macros :refer [go go-loop alt!]]
+                   [contrast.macros :refer [forloop]]))
 
-(defn layer [data owner {:keys [fpaint style width height pixel-requests]}]
+(defn layer-paint [data owner fpaint subscriber]
+  (let [cnv (om/get-node owner "canvas")]
+    (fpaint data cnv)
+    (when subscriber
+      (put! subscriber (-> cnv
+                           (.getContext "2d")
+                           (.getImageData 0 0 (.-width cnv) (.-height cnv)))))))
+
+(defn layer [data owner {:keys [fpaint style width height pixel-requests subscriber]}]
   (reify
     om/IWillMount
     (will-mount [_]
       (when pixel-requests
         (go-loop []
-          (let [[x y w h response] (<! pixel-requests)]
+          (let [response (<! pixel-requests)]
             (put! response (-> (om/get-node owner "canvas")
                                (.getContext "2d")
-                               (.getImageData x y w h))))
+                               (.getImageData 0 0 width height))))
           (recur))))
 
     om/IDidMount
     (did-mount [_]
-      (fpaint data (om/get-node owner "canvas")))
+      (layer-paint data owner fpaint subscriber))
 
     om/IDidUpdate
     (did-update [_ _ _]
-      (fpaint data (om/get-node owner "canvas")))
+      (layer-paint data owner fpaint subscriber))
 
     om/IRender
     (render [_]
-      (dom/canvas #js {:ref "canvas"
-                       :width width :height height
-                       :style (clj->js style)}))))
+      (dom/canvas #js {:ref "canvas" :width width :height height}))))
 
 (defn overlay-all! [victim foreground]
   (if-not victim
@@ -44,61 +51,77 @@
           (recur (inc i) (pixel/pan! f 1))))
       victim)))
 
-(defn layered-canvas [data owner {:keys [layers width height pixel-requests]}]
+(defn layered-canvas [data owner {:keys [layers width height pixel-requests subscriber]}]
   (reify
     om/IInitState
     (init-state [_]
-      (when pixel-requests
-        {:child-requests (take (count layers) (repeatedly #(chan)))}))
+      (when (or subscriber pixel-requests)
+        {:child-requests (take (count layers) (repeatedly #(chan)))
+         :child-updates (take (count layers) (repeatedly #(chan)))}))
 
     om/IWillMount
     (will-mount [_]
-      (when pixel-requests
-        (go-loop []
-          (let [child-requests (om/get-state owner :child-requests)
-                [x y w h pixel-response] (<! pixel-requests)]
-            ;; TODO call in order of zIndex
 
-            ;; V1 - Assume nothing is offset.
-            ;; Afterward, write the reduce function that you wish you had.
+      (when (or pixel-requests subscriber)
+        (let [combine-these-layers (chan)
+              all-layers (vec (map vector
+                                   (repeat nil)
+                                   (om/get-state owner :child-requests)))]
+          (go-loop []
+            ;; Use `loop` rather than `reduce` because the reducing function
+            ;; consumes a channel.
+            (let [[layers response] (<! combine-these-layers)]
+              (put! response
+                    (loop [imagedata nil
+                           remaining layers]
+                      (when (not-empty remaining)
+                        (let [[absorbee absorbee-requests] (first remaining)
+                              absorbee (or absorbee
+                                           (let [r (chan)]
+                                             (put! absorbee-requests r)
+                                             (<! r)))]
+                          (recur (overlay-all! imagedata absorbee)
+                                 (rest remaining))))
+                      imagedata)))
+            (recur))
 
-            ;; I could write a core.async-compatible `reduce`.
-            ;; Or I could explore channels more and find if there's a way to make
-            ;; them do what I want.
+          (when pixel-requests
+            (pipeline 1 combine-these-layers
+                      (map (fn [response] [all-layers response]))
+                      pixel-requests
+                      false))
 
-             ;; Use `loop` rather than `reduce` because the reducing function
-             ;; consumes a channel.
-            (put! pixel-response
-                  (loop [imagedata nil
-                         remaining-children child-requests]
-                    (when (not-empty remaining-children)
-                      (recur (let [response (chan)]
-                               (put! (first remaining-children) [x y w h response])
-                               (overlay-all! imagedata (<! response)))
-                             (rest remaining-children)))
-                    imagedata)))
-          (recur))))
+          (when subscriber
+            (let [child-updates (om/get-state owner :child-updates)]
+              (doseq [i (range (count child-updates))
+                      :let [child (nth child-updates i)]]
+                (pipeline 1 combine-these-layers
+                          (map (fn [imagedata]
+                                 [(assoc-in all-layers [i 0] imagedata)
+                                  subscriber]))
+                          child
+                          false)))))))
 
     om/IRenderState
-    (render-state [_ {:keys [child-requests]}]
+    (render-state [_ {:keys [child-requests child-updates]}]
       (apply dom/div #js {:style #js {:width width :height height
                                       :position "relative"}}
-             (for [i (range (count layers))
-                   :let [lconfig (nth layers i)]]
-               (if (associative? lconfig)
-                 (let [{:keys [fpaint fdata left top additional z-index]}
-                       lconfig
-                       width (or (:width lconfig) width)
-                       height (or (:height lconfig) height)
-                       left (or left 0)
-                       top (or top 0)
-                       z-index (or z-index i)]
-                   (om/build layer (fdata data)
-                             {:opts {:pixel-requests (nth child-requests i)
-                                     :fpaint fpaint
-                                     :width width :height height
-                                     :additional additional
-                                     :style {:position "absolute"
-                                             :left left :top top
-                                             :zIndex i}}}))
-                 lconfig))))))
+             (for [i (range (count layers))]
+               (let [opts {:pixel-requests (nth child-requests i)
+                           :subscriber (nth child-updates i)}
+                     layer-or-config (nth layers i)
+                     layer (cond
+                            (associative? layer-or-config)
+                            (om/build layer ((:fdata layer-or-config) data)
+                                      {:opts (assoc opts
+                                               :fpaint (:fpaint layer-or-config)
+                                               :width width :height height)})
+
+                            (fn? layer-or-config)
+                            (layer-or-config opts)
+
+                            :else
+                            layer-or-config)]
+                 (dom/div #js {:style #js {:zIndex i :position "absolute"
+                                           :left 0 :top 0}}
+                          layer)))))))

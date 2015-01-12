@@ -11,10 +11,11 @@
 
 
 ;; Potential improvement:
-;; (defonce app-state
+;; (defonce app-state2
 ;;   (atom {:entities {:single-linear-gradient {:width 600
 ;;                                              :height 600
 ;;                                              :transition-radius 50
+;;                                              :imagedata nil
 ;;                                              :pixel-probe {}}}}))
 
 (defonce app-state
@@ -27,19 +28,19 @@
   (reify
     om/IInitState
     (init-state [_]
-      {:illusion-pxs (chan)})
+      {:slg-updates (chan)})
 
     om/IRenderState
-    (render-state [_ {:keys [illusion-pxs]}]
+    (render-state [_ {:keys [slg-updates]}]
       (let [graphic (om/build illusions/single-linear-gradient
                               (select-keys app [:width :height
                                                 :transition-radius])
-                              {:opts {:pixel-requests illusion-pxs}})
+                              {:opts {:subscriber slg-updates}})
             probe (om/build pixel-probe
                             ;; TODO why isn't it updating when transition-radius changes
                             (select-keys app [:width :height :pixel-probe
                                               :transition-radius])
-                            {:opts {:pixel-requests illusion-pxs}})]
+                            {:opts {:updates slg-updates}})]
         (dom/div nil
                  (om/build layered-canvas app
                            {:opts {:width (:width app)
