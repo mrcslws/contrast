@@ -25,8 +25,7 @@
 
 (defn paint [data owner]
   (let [ctx (.getContext (om/get-node owner "canvas") "2d")
-        y (-> data :pixel-probe :row)
-        x (-> data :pixel-probe :col)
+        [x y] (-> data :pixel-probe :selected)
         imagedata (om/get-state owner :imagedata)]
     (cnv/clear ctx)
     (when (and x y imagedata)
@@ -40,12 +39,17 @@
                 (cnv/fill-rect ctx (rem i w) (quot i w) 1 1 "blue"))
               (recur (inc i) (pixel/pan! px 1)))))))))
 
+(defn coords [evt]
+  [(-> evt offset-from-target :x)
+   (-> evt offset-from-target :y)])
+
 (defn pixel-probe [data owner {:keys [updates]}]
   (reify
     om/IWillMount
     (will-mount [_]
       (go-loop []
-        (om/set-state! owner :imagedata (<! updates))))
+        (om/set-state! owner :imagedata (<! updates))
+        (recur)))
 
     om/IDidMount
     (did-mount [_]
@@ -61,15 +65,18 @@
                        :style #js {:position "absolute"
                                    :left 0 :top 0}
                        :ref "canvas"
+                       :onClick #(om/transact!
+                                  (:pixel-probe data)
+                                  (fn [c]
+                                    (assoc c
+                                      :fallback (coords %))))
                        :onMouseLeave #(om/transact!
                                       (:pixel-probe data)
                                       (fn [c]
                                         (assoc c
-                                          :row nil
-                                          :col nil)))
+                                          :selected (:fallback c))))
                        :onMouseMove #(om/transact!
                                       (:pixel-probe data)
                                       (fn [c]
                                         (assoc c
-                                          :row (-> % offset-from-target :y)
-                                          :col (-> % offset-from-target :x))))}))))
+                                          :selected (coords %))))}))))
