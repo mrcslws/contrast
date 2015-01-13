@@ -5,53 +5,79 @@
             [contrast.slider :refer [slider]]
             [contrast.canvas :as cnv]
             [contrast.layeredcanvas :refer [layered-canvas]])
-  (:require-macros [cljs.core.async.macros :refer [go go-loop alt!]]))
+  (:require-macros [cljs.core.async.macros :refer [go go-loop alt!]]
+                   [contrast.macros :refer [forloop]]))
 
-(defn grayscale [i]
-  (str "rgb(" i "," i "," i ")"))
+;; TODO decomplect vertical `progress->color` from horizontal
+(defn two-sides-paint [progress->color]
+  (fn [{:keys [transition-radius]} cnv]
+    (let [ctx (.getContext cnv "2d")
+          width (.-width cnv)
+          height (.-height cnv)
+          imagedata (.createImageData ctx width height)
+          data (.-data imagedata)
+          start 0
+          end 255
+          middle 127
+          lx 0
+          tx (- (/ width 2) transition-radius)
+          tw (* 2 transition-radius)
+          rx (+ tx tw)]
+      (forloop [(row 0) (< row height) (inc row)]
+               (let [lcolor (progress->color middle start (/ row height))
+                     rcolor (progress->color middle end (/ row height))]
+                 (forloop [(col lx) (< col tx) (inc col)]
+                          (let [base (-> row (* width) (+ col) (* 4))]
+                            (doto data
+                              (aset base lcolor)
+                              (aset (+ base 1) lcolor)
+                              (aset (+ base 2) lcolor)
+                              (aset (+ base 3) 255))))
+                 (forloop [(col rx) (< col width) (inc col)]
+                          (let [base (-> row (* width) (+ col) (* 4))]
+                            (doto data
+                              (aset base rcolor)
+                              (aset (+ base 1) rcolor)
+                              (aset (+ base 2) rcolor)
+                              (aset (+ base 3) 255))))
+                 (forloop [(col tx) (< col rx) (inc col)]
+                          (let [base (-> row (* width) (+ col) (* 4))
+                                c (progress->color lcolor rcolor (/ (- col tx) tw))]
+                            (doto data
+                              (aset base c)
+                              (aset (+ base 1) c)
+                              (aset (+ base 2) c)
+                              (aset (+ base 3) 255))))))
+      (.putImageData ctx imagedata 0 0)
+      imagedata)))
 
-(defn paint-two-halves [_ cnv]
-  (let [ctx (.getContext cnv "2d")
-        width (.-width cnv)
-        height (.-height cnv)
-        w (/ width 2)]
-    (cnv/clear ctx)
-    (cnv/fill-rect ctx 0 0 w height
-                   (cnv/linear-gradient ctx 0 0 0 height
-                                        [0 (grayscale 127)]
-                                        [1 (grayscale 0)]))
-    (cnv/fill-rect ctx w 0 w height
-                   (cnv/linear-gradient ctx 0 0 0 height
-                                        [0 (grayscale 128)]
-                                        [1 (grayscale 255)]))))
+(defn two-sides-component [progress->color]
+  (fn [config owner {:keys [subscriber]}]
+    (reify
+      om/IRender
+      (render [_]
+        (dom/div nil
+                 (om/build cnv/canvas config {:opts {:subscriber subscriber
+                                                     :width (:width config)
+                                                     :height (:height config)
+                                                     :fpaint (two-sides-paint progress->color)}}))))))
 
-(defn paint-transition [{:keys [transition-radius]} cnv]
-  (let [ctx (.getContext cnv "2d")
-        width (.-width cnv)
-        height (.-height cnv)
-        tx (- (/ width 2) transition-radius)
-        tw (* 2 transition-radius)]
-    (cnv/clear ctx)
-    (doseq [row (range height)
-            :let [left (grayscale (js/Math.round
-                                   (* 127 (- 1 (/ row height)))))
-                  right (grayscale (js/Math.round
-                                    (* 128 (+ 1 (/ row height)))))]]
-      (cnv/fill-rect ctx tx row tw 1
-                     (cnv/linear-gradient ctx tx 0 (+ tx tw) 0
-                                          [0 left]
-                                          [1 right])))))
+(defn linear-gradient [start end progress]
+  (-> progress
+      (* (- end start))
+      (+ start)
+      js/Math.round))
 
-(defn single-linear-gradient [config owner {:keys [subscriber]}]
-  (reify
-    om/IRender
-    (render [_]
-      (om/build layered-canvas (select-keys config [:transition-radius])
-                {:opts {:subscriber subscriber
-                        :width (:width config)
-                        :height (:height config)
-                        :layers [{:fpaint paint-two-halves
-                                  :fdata #(select-keys % [])}
-                                 {:fpaint paint-transition
-                                  :fdata #(select-keys % [:transition-radius])}
-                                 ]}}))))
+(defn linear->sinusoidal [progress]
+  (-> progress
+      (* js/Math.PI)
+      (- (/ js/Math.PI 2))
+      js/Math.sin
+      inc
+      (/ 2)))
+
+(def single-linear-gradient
+  (two-sides-component linear-gradient))
+(def single-sinusoidal-gradient
+  (two-sides-component #(linear-gradient % %2
+                                         (linear->sinusoidal %3))))

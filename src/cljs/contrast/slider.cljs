@@ -3,21 +3,9 @@
             [om.dom :as dom :include-macros true]
             [cljs.core.async :refer [timeout <!]]
             [goog.string :as gstring]
-            [goog.string.format])
+            [goog.string.format]
+            [contrast.dom :as domh])
   (:require-macros [cljs.core.async.macros :refer [go-loop]]))
-
-(defn offset-from [evt el]
-  {:x (- (.-pageX evt)
-         (-> el .getBoundingClientRect .-left))
-   :y (- (.-pageY evt)
-         (-> el .getBoundingClientRect .-top))})
-
-(defn offset-from-target [evt]
-  (offset-from evt (-> evt .-target)))
-
-(defn coords [evt]
-  [(-> evt offset-from-target :x)
-   (-> evt offset-from-target :y)])
 
 (def underlap 40)
 (def wside 8)
@@ -50,12 +38,17 @@
         (when (< p 1)
           (recur))))))
 
+;; TODO:
+;; - Touch compatibility
+;; - Keyboard compatibility
+;; - Text styling extension point?
+;; - Use state instead of opts?
 (defn slider [data owner {:keys [data-key
                                  data-width data-min data-max
                                  data-interval data-format]}]
   (letfn [(slider-value [evt]
             (-> evt
-                (offset-from (om/get-node owner "tracking-area"))
+                (domh/offset-from (om/get-node owner "tracking-area"))
                 :x
                 (- underlap)
                 (/ data-width)

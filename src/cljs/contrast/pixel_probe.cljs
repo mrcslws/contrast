@@ -6,14 +6,9 @@
             [contrast.canvas :as cnv]
             [contrast.illusions :as illusions]
             [contrast.layeredcanvas :refer [layered-canvas]]
-            [contrast.pixel :as pixel])
+            [contrast.pixel :as pixel]
+            [contrast.dom :as domh])
   (:require-macros [cljs.core.async.macros :refer [go go-loop alt!]]))
-
-(defn offset-from-target [evt]
-  {:x (- (.-pageX evt)
-      (-> evt .-target .getBoundingClientRect .-left))
-   :y (- (.-pageY evt)
-      (-> evt .-target .getBoundingClientRect .-top))})
 
 ;; (defn paint-redline [data owner]
 ;;   (let [row (-> data :pixel-probe :row)
@@ -40,8 +35,8 @@
               (recur (inc i) (pixel/pan! px 1)))))))))
 
 (defn coords [evt]
-  [(-> evt offset-from-target :x)
-   (-> evt offset-from-target :y)])
+  [(-> evt domh/offset-from-target :x)
+   (-> evt domh/offset-from-target :y)])
 
 (defn pixel-probe [data owner {:keys [updates]}]
   (reify
