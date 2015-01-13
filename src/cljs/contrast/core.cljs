@@ -42,28 +42,32 @@
                    (om/build layered-canvas config
                              {:opts {:width (:width config)
                                      :height (:height config)
-                                     :layers [graphic probe]}})
-                   (dom/div #js {:style #js {:height 50}}
-                            ;; TODO better styling
-                            (om/build slider config
-                                      {:opts {:data-key :transition-radius
-                                              :data-width 280 :data-min 0 :data-max 300
-                                              :data-interval 1 :data-format "%dpx"}}))))))))
+                                     :layers [graphic probe]}})))))))
+
+(def probed-linear (probed-illusion illusions/single-linear-gradient))
+(def probed-sinusoidal (probed-illusion illusions/single-sinusoidal-gradient))
 
 (defn conjurer [app owner]
   (reify
-    om/IInitState
-    (init-state [_]
-      {:slg-updates (chan)
-       :ssg-updates (chan)})
-
-    om/IRenderState
-    (render-state [_ {:keys [slg-updates ssg-updates]}]
+    om/IRender
+    (render [_]
       (dom/div nil
-               (om/build (probed-illusion illusions/single-linear-gradient)
+               (om/build probed-linear
                          (:single-linear-gradient app))
-               (om/build (probed-illusion illusions/single-sinusoidal-gradient)
-                         (:single-linear-gradient app))))))
+               (dom/div #js {:style #js {:height 50}}
+                        ;; TODO better styling
+                        (om/build slider (:single-linear-gradient app)
+                                  {:opts {:data-key :transition-radius
+                                          :data-width 280 :data-min 0 :data-max 300
+                                          :data-interval 1 :data-format "%dpx"}}))
+               (om/build probed-sinusoidal
+                         (:single-sinusoidal-gradient app))
+               (dom/div #js {:style #js {:height 50}}
+                        ;; TODO better styling
+                        (om/build slider (:single-sinusoidal-gradient app)
+                                  {:opts {:data-key :transition-radius
+                                          :data-width 280 :data-min 0 :data-max 300
+                                          :data-interval 1 :data-format "%dpx"}}))))))
 
 (defn main []
   (om/root conjurer app-state {:target (.getElementById js/document "app")}))

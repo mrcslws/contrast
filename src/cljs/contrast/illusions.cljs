@@ -26,6 +26,7 @@
       (forloop [(row 0) (< row height) (inc row)]
                (let [lcolor (progress->color middle start (/ row height))
                      rcolor (progress->color middle end (/ row height))]
+                 ;; TODO make more declarative
                  (forloop [(col lx) (< col tx) (inc col)]
                           (let [base (-> row (* width) (+ col) (* 4))]
                             (doto data
@@ -56,11 +57,10 @@
     (reify
       om/IRender
       (render [_]
-        (dom/div nil
-                 (om/build cnv/canvas config {:opts {:subscriber subscriber
-                                                     :width (:width config)
-                                                     :height (:height config)
-                                                     :fpaint (two-sides-paint progress->color)}}))))))
+        (om/build cnv/canvas config {:opts {:subscriber subscriber
+                                            :width (:width config)
+                                            :height (:height config)
+                                            :fpaint (two-sides-paint progress->color)}})))))
 
 (defn linear-gradient [start end progress]
   (-> progress
