@@ -7,9 +7,6 @@ goog.addDependency("../cljs/reader.js", ['cljs.reader'], ['goog.string', 'cljs.c
 goog.addDependency("../weasel/repl.js", ['weasel.repl'], ['weasel.impls.websocket', 'cljs.core', 'clojure.browser.net', 'cljs.reader', 'clojure.browser.event']);
 goog.addDependency("../contrast/canvas.js", ['contrast.canvas'], ['cljs.core']);
 goog.addDependency("../om/dom.js", ['om.dom'], ['cljs.core', 'goog.object']);
-goog.addDependency("../om/core.js", ['om.core'], ['goog.dom', 'cljs.core', 'om.dom', 'goog.ui.IdGenerator']);
-goog.addDependency("../contrast/slider.js", ['contrast.slider'], ['cljs.core', 'om.dom', 'om.core']);
-goog.addDependency("../contrast/pixel.js", ['contrast.pixel'], ['cljs.core']);
 goog.addDependency("../cljs/core/async/impl/protocols.js", ['cljs.core.async.impl.protocols'], ['cljs.core']);
 goog.addDependency("../cljs/core/async/impl/buffers.js", ['cljs.core.async.impl.buffers'], ['cljs.core', 'cljs.core.async.impl.protocols']);
 goog.addDependency("../cljs/core/async/impl/dispatch.js", ['cljs.core.async.impl.dispatch'], ['cljs.core', 'cljs.core.async.impl.buffers', 'goog.async.nextTick']);
@@ -17,6 +14,9 @@ goog.addDependency("../cljs/core/async/impl/channels.js", ['cljs.core.async.impl
 goog.addDependency("../cljs/core/async/impl/ioc_helpers.js", ['cljs.core.async.impl.ioc_helpers'], ['cljs.core', 'cljs.core.async.impl.protocols']);
 goog.addDependency("../cljs/core/async/impl/timers.js", ['cljs.core.async.impl.timers'], ['cljs.core.async.impl.channels', 'cljs.core.async.impl.dispatch', 'cljs.core', 'cljs.core.async.impl.protocols']);
 goog.addDependency("../cljs/core/async.js", ['cljs.core.async'], ['cljs.core.async.impl.channels', 'cljs.core.async.impl.dispatch', 'cljs.core', 'cljs.core.async.impl.buffers', 'cljs.core.async.impl.protocols', 'cljs.core.async.impl.ioc_helpers', 'cljs.core.async.impl.timers']);
+goog.addDependency("../om/core.js", ['om.core'], ['goog.dom', 'cljs.core', 'om.dom', 'goog.ui.IdGenerator']);
+goog.addDependency("../contrast/slider.js", ['contrast.slider'], ['goog.string', 'cljs.core', 'om.dom', 'cljs.core.async', 'goog.string.format', 'om.core']);
+goog.addDependency("../contrast/pixel.js", ['contrast.pixel'], ['cljs.core']);
 goog.addDependency("../contrast/layeredcanvas.js", ['contrast.layeredcanvas'], ['contrast.pixel', 'cljs.core', 'om.dom', 'cljs.core.async', 'om.core']);
 goog.addDependency("../contrast/illusions.js", ['contrast.illusions'], ['contrast.canvas', 'contrast.slider', 'contrast.layeredcanvas', 'cljs.core', 'om.dom', 'cljs.core.async', 'om.core']);
 goog.addDependency("../contrast/pixel_probe.js", ['contrast.pixel_probe'], ['contrast.canvas', 'contrast.pixel', 'contrast.slider', 'contrast.layeredcanvas', 'cljs.core', 'om.dom', 'cljs.core.async', 'om.core', 'contrast.illusions']);

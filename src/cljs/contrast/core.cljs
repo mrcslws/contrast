@@ -37,7 +37,6 @@
                                                 :transition-radius])
                               {:opts {:subscriber slg-updates}})
             probe (om/build pixel-probe
-                            ;; TODO why isn't it updating when transition-radius changes
                             (select-keys app [:width :height :pixel-probe
                                               :transition-radius])
                             {:opts {:updates slg-updates}})]
@@ -47,7 +46,11 @@
                                    :height (:height app)
                                    :layers [graphic probe]}})
                  (om/build slider app
-                           {:opts {:value-key :transition-radius}}))))))
+                           {:opts {:data-key :transition-radius
+
+                                   ;; TODO - move to init-state?
+                                   :data-width 280 :data-min 0 :data-max 300
+                                   :data-interval 1 :data-format "%dpx"}}))))))
 
 (defn main []
   (om/root conjurer app-state {:target (.getElementById js/document "app")}))
