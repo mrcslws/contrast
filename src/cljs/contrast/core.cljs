@@ -16,10 +16,12 @@
   (atom {:single-linear-gradient {:width 600
                                   :height 256
                                   :transition-radius 50
+                                  :slider {}
                                   :pixel-probe {:knob-width 4}}
          :single-sinusoidal-gradient {:width 600
                                       :height 256
                                       :transition-radius 50
+                                      :slider {}
                                       :pixel-probe {:knob-width 4}}}))
 
 (defn probed-illusion [illusion]
@@ -41,7 +43,7 @@
                               {:opts {:updates updates}})]
           (dom/div #js {:style #js {:marginLeft 20 :marginRight 20}}
                    (om/build row-probe config
-                             {:init-state {:track-border-only true}
+                             {:init-state {:track-border-only? true}
                               :state {:content
                                       (om/build layered-canvas config
                                                 {:opts {:width (:width config)
