@@ -32,6 +32,7 @@
     (will-mount [_]
 
       (when (or pixel-requests subscriber)
+        ;; TODO stop leaking this loop on unmount
         (let [combine-these-layers (chan)
               all-layers (vec (map vector
                                    (repeat nil)
@@ -78,19 +79,20 @@
              (for [i (range (count layers))]
                (let [opts {:pixel-requests (nth child-requests i)
                            :subscriber (nth child-updates i)}
-                     layer-or-config (nth layers i)
+                     lconfig (nth layers i)
                      layer (cond
-                            (associative? layer-or-config)
-                            (om/build cnv/canvas ((:fdata layer-or-config) data)
+
+                            (contains? lconfig :fpaint)
+                            (om/build cnv/canvas ((:fdata lconfig) data)
                                       {:opts (assoc opts
-                                               :fpaint (:fpaint layer-or-config)
+                                               :fpaint (:fpaint lconfig)
                                                :width width :height height)})
 
-                            (fn? layer-or-config)
-                            (layer-or-config opts)
+                            (contains? lconfig :built)
+                            (:built lconfig)
 
                             :else
-                            layer-or-config)]
+                            (throw "What is this?" lconfig))]
                  (dom/div #js {:style #js {:zIndex i :position "absolute"
                                            :left 0 :top 0}}
                           layer)))))))

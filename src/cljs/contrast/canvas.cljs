@@ -37,6 +37,7 @@
     om/IWillMount
     (will-mount [_]
       (when pixel-requests
+        ;; TODO stop leaking on unmount
         (go-loop []
           (let [response (<! pixel-requests)]
             (put! response (-> (om/get-node owner "canvas")

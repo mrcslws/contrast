@@ -6,7 +6,9 @@
             [contrast.slider :refer [slider]]
             [contrast.illusions :as illusions]
             [contrast.pixel-probe :refer [pixel-probe]]
-            [contrast.layeredcanvas :refer [layered-canvas]])
+            [contrast.row-probe :refer [row-probe]]
+            [contrast.layeredcanvas :refer [layered-canvas]]
+            [contrast.dom :as domh])
     (:require-macros [cljs.core.async.macros :refer [go go-loop alt!]]))
 
 ;; TODO switch away from "radius". "width" or "diameter" are better.
@@ -14,11 +16,11 @@
   (atom {:single-linear-gradient {:width 600
                                   :height 256
                                   :transition-radius 50
-                                  :pixel-probe {}}
+                                  :pixel-probe {:knob-width 4}}
          :single-sinusoidal-gradient {:width 600
                                       :height 256
                                       :transition-radius 50
-                                      :pixel-probe {}}}))
+                                      :pixel-probe {:knob-width 4}}}))
 
 (defn probed-illusion [illusion]
   (fn [config owner]
@@ -37,12 +39,15 @@
                               (select-keys config [:width :height :pixel-probe
                                                    :transition-radius])
                               {:opts {:updates updates}})]
-
-          (dom/div nil
-                   (om/build layered-canvas config
-                             {:opts {:width (:width config)
-                                     :height (:height config)
-                                     :layers [graphic probe]}})))))))
+          (dom/div #js {:style #js {:marginLeft 20 :marginRight 20}}
+                   (om/build row-probe config
+                             {:init-state {:track-border-only true}
+                              :state {:content
+                                      (om/build layered-canvas config
+                                                {:opts {:width (:width config)
+                                                        :height (:height config)
+                                                        :layers [{:built graphic}
+                                                                 {:built probe}]}})}})))))))
 
 (def probed-linear (probed-illusion illusions/single-linear-gradient))
 (def probed-sinusoidal (probed-illusion illusions/single-sinusoidal-gradient))
@@ -55,19 +60,30 @@
                (om/build probed-linear
                          (:single-linear-gradient app))
                (dom/div #js {:style #js {:height 50}}
+                        ;; TODO stop duplicating...
                         ;; TODO better styling
                         (om/build slider (:single-linear-gradient app)
-                                  {:opts {:data-key :transition-radius
-                                          :data-width 280 :data-min 0 :data-max 300
-                                          :data-interval 1 :data-format "%dpx"}}))
+                                  {:init-state {:data-key :transition-radius
+                                                :data-width 280
+                                                :data-min 0
+                                                :data-max 300
+                                                :data-format "%dpx"
+                                                :data-interval 1}}))
+
                (om/build probed-sinusoidal
                          (:single-sinusoidal-gradient app))
+
                (dom/div #js {:style #js {:height 50}}
                         ;; TODO better styling
                         (om/build slider (:single-sinusoidal-gradient app)
-                                  {:opts {:data-key :transition-radius
-                                          :data-width 280 :data-min 0 :data-max 300
-                                          :data-interval 1 :data-format "%dpx"}}))))))
+                                  {:init-state {:data-key :transition-radius
+                                                :data-width 280
+                                                :data-min 0
+                                                :data-max 300
+                                                :data-format "%dpx"
+                                                :data-interval 1}}))
+               (dom/p nil
+                      "Needs to be fun to look at! That might be the main reason to use a grating.")))))
 
 (defn main []
   (om/root conjurer app-state {:target (.getElementById js/document "app")}))

@@ -10,14 +10,6 @@
             [contrast.dom :as domh])
   (:require-macros [cljs.core.async.macros :refer [go go-loop alt!]]))
 
-;; (defn paint-redline [data owner]
-;;   (let [row (-> data :pixel-probe :row)
-;;         cnv (om/get-node owner "canvas")
-;;         ctx (.getContext cnv "2d")]
-;;     (cnv/clear ctx)
-;;     (when row
-;;       (cnv/fill-rect ctx 0 row (.-width cnv) 1 "red"))))
-
 (defn paint [data owner]
   (let [ctx (.getContext (om/get-node owner "canvas") "2d")
         [x y] (-> data :pixel-probe :selected)
