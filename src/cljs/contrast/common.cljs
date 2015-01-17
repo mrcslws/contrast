@@ -39,44 +39,48 @@
 ;; One handler to rule them all.
 ;; Mouse-moves are sometimes outside the boundary because the knob follows
 ;; the mouse, similar to the ice staircase in "Let It Go".
-(defn move-handler [evt data owner]
+(defn move-handler [evt owner]
   (let [ta (om/get-node owner "tracking-area")
         cc (om/get-node owner "content-container")
         {:keys [x y]} (domh/offset-from evt cc)
         track (and (domh/within-element? evt ta)
                    (not (and (om/get-state owner :track-border-only?)
                              (domh/within-element? evt cc))))]
-    (when data (om/update! data :is-tracking? track))
     (if track
       (when-let [on-move (om/get-state owner :on-move)]
         (on-move x y))
       (when-let [on-exit (om/get-state owner :on-exit)]
         (on-exit x y)))))
 
-(defn click-handler [evt data owner]
-  (move-handler evt data owner)
+(defn click-handler [evt owner]
+  (move-handler evt owner)
   (when-let [on-click (om/get-state owner :on-click)]
     ;; The `on-click` should not care about the [x y].
     ;; Handle that in the `on-move`.
     (on-click)))
 
-(defn tracking-area [data owner]
+
+(defn tracking-area-component [_ owner]
   (reify
-    om/IWillMount
-    (will-mount [_]
-      (when data (om/update! data :is-tracking? false)))
 
     om/IRenderState
-    (render-state [_ {:keys [content underlap-x underlap-y on-click]}]
+    (render-state [_ {:keys [content underlap-x underlap-y on-click
+                             determine-width-from-contents?]}]
       (dom/div #js {:ref "tracking-area"
-                    :onMouseEnter #(move-handler % data owner)
-                    :onMouseMove #(move-handler % data owner)
-                    :onMouseOut #(move-handler % data owner)
-                    :onClick #(click-handler % data owner)
-                    :style #js {;; Expand to the content,
-                                ;; rather than the available space.
-                                :display "inline-block"
+                    :onMouseEnter #(move-handler % owner)
+                    :onMouseMove #(move-handler % owner)
+                    :onMouseOut #(move-handler % owner)
+                    :onClick #(click-handler % owner)
+                    :style #js {:display (if determine-width-from-contents?
+                                           "inline-block"
+                                           "block")
+
                                 :cursor (if on-click "pointer" "auto")
+
+                                ;; Include child element margins.
+                                ;; They won't be included in cases
+                                ;; where underlap is 0.
+                                :overflow "auto"
 
                                 :marginTop (- underlap-y)
                                 :marginBottom (- underlap-y)
@@ -95,7 +99,8 @@
                                        :position "relative"}}
                       content)))))
 
-(defn ->tracking-area [data optional-state & content]
-  (om/build tracking-area data
-            {:state (assoc optional-state
-                      :content content)}))
+(defn tracking-area [style config & content]
+  (dom/div {:style (clj->js style)}
+           (om/build tracking-area-component nil
+                     {:state (assoc config
+                               :content content)})))

@@ -3,7 +3,7 @@
             [om.dom :as dom :include-macros true]
             [contrast.dom :as domh]
             [contrast.common :refer [wide-background-image
-                                     ->tracking-area]]))
+                                     tracking-area]]))
 
 (def lens-overshot 10)
 (def lens-h 11)
@@ -26,18 +26,15 @@
     om/IRenderState
     (render-state [_ {:keys [content data-key data-width data-min data-max
                              data-interval lens-top track-border-only?]}]
-      (->tracking-area
-       nil
+      (tracking-area {:display "inline-block"}
        {:on-move (on-move config owner)
         :on-exit (on-exit config owner)
         :underlap-x 40
-        :underlap-y 0
-        :track-border-only? track-border-only?}
-       (dom/div #js {:style #js {;; Positioned from start of content,
-                                 ;; rather than start of tracking area,
-                                 ;; which is shifted due to padding.
-                                 :position "relative"
-                                 :zIndex 1}}
+        :track-border-only? track-border-only?
+        :determine-width-from-contents? true}
+       (dom/div #js {:style #js {:position "relative"
+                                 :zIndex 1
+                                 :height 0}}
                 (apply dom/div #js {:style
                                     #js {:display (if (nil? lens-top)
                                                     "none" "block")

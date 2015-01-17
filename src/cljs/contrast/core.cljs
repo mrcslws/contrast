@@ -2,6 +2,7 @@
   (:require [om.core :as om :include-macros true]
             [om.dom :as dom :include-macros true]
             [cljs.core.async :refer [put! chan mult tap close! <!]]
+            [contrast.app-state :as state]
             [contrast.canvas :as cnv]
             [contrast.slider :refer [slider]]
             [contrast.illusions :as illusions]
@@ -10,19 +11,6 @@
             [contrast.layeredcanvas :refer [layered-canvas]]
             [contrast.dom :as domh])
     (:require-macros [cljs.core.async.macros :refer [go go-loop alt!]]))
-
-;; TODO switch away from "radius". "width" or "diameter" are better.
-(defonce app-state
-  (atom {:single-linear-gradient {:width 600
-                                  :height 256
-                                  :transition-radius 50
-                                  :slider {}
-                                  :pixel-probe {:knob-width 4}}
-         :single-sinusoidal-gradient {:width 600
-                                      :height 256
-                                      :transition-radius 50
-                                      :slider {}
-                                      :pixel-probe {:knob-width 4}}}))
 
 (defn probed-illusion [illusion]
   (fn [config owner]
@@ -41,7 +29,7 @@
                               (select-keys config [:width :height :pixel-probe
                                                    :transition-radius])
                               {:opts {:updates updates}})]
-          (dom/div #js {:style #js {:marginLeft 20 :marginRight 20}}
+          (dom/div nil
                    (om/build row-probe config
                              {:init-state {:track-border-only? true}
                               :state {:content
@@ -61,31 +49,25 @@
       (dom/div nil
                (om/build probed-linear
                          (:single-linear-gradient app))
-               (dom/div #js {:style #js {:height 50}}
-                        ;; TODO stop duplicating...
-                        ;; TODO better styling
-                        (om/build slider (:single-linear-gradient app)
-                                  {:init-state {:data-key :transition-radius
-                                                :data-width 280
-                                                :data-min 0
-                                                :data-max 300
-                                                :data-format "%dpx"
-                                                :data-interval 1}}))
+               (slider {:width 280}
+                       (:single-linear-gradient app)
+                       (:transition-radius-schema app))
 
-               (om/build probed-sinusoidal
-                         (:single-sinusoidal-gradient app))
 
-               (dom/div #js {:style #js {:height 50}}
-                        ;; TODO better styling
-                        (om/build slider (:single-sinusoidal-gradient app)
-                                  {:init-state {:data-key :transition-radius
-                                                :data-width 280
-                                                :data-min 0
-                                                :data-max 300
-                                                :data-format "%dpx"
-                                                :data-interval 1}}))
+               ;; (om/build probed-sinusoidal
+               ;;           (:single-sinusoidal-gradient app))
+
+               ;; (dom/div #js {:style #js {:height 50}}
+               ;;          ;; TODO better styling
+               ;;          (om/build slider (:single-sinusoidal-gradient app)
+               ;;                    {:init-state {:data-key :transition-radius
+               ;;                                  :data-width 280
+               ;;                                  :data-min 0
+               ;;                                  :data-max 300
+               ;;                                  :data-format "%dpx"
+               ;;                                  :data-interval 1}}))
                (dom/p nil
                       "Needs to be fun to look at! That might be the main reason to use a grating.")))))
 
 (defn main []
-  (om/root conjurer app-state {:target (.getElementById js/document "app")}))
+  (om/root conjurer state/app-state {:target (.getElementById js/document "app")}))
