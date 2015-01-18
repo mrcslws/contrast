@@ -36,6 +36,11 @@
   (b [_] b*)
   (a [_] a*))
 
+;; Useful for converting a `[r g b a]` vector to something that
+;; can be compared via `matches?`
+(defn immutable-pixel [r g b a]
+  (ImmutablePixel. r g b a))
+
 (deftype PixelPointer [arr ^:volatile-mutable base]
   PPixel
   (r [this] (aget arr base))

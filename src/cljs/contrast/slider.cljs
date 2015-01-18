@@ -109,7 +109,7 @@
                                  :margin-bottom 8
                                  :height 4}}
                 (apply dom/div #js {:style #js {:position "absolute"
-                                                :zOrder 0
+                                                :zIndex 0
                                                 :height 4
                                                 :width "100%"}}
                        (wide-background-image "/images/SliderLeft.png" 8
@@ -118,7 +118,7 @@
                                               4))
                 (dom/div #js {:style
                               #js {:position "absolute"
-                                   :zOrder 1
+                                   :zIndex 1
                                    :left (slider-left (om/get-state
                                                        owner :locked-value)
                                                       schema)}}
@@ -128,7 +128,7 @@
                                                     wmarker 4)))
                 (dom/div #js {:style
                               #js {:position "absolute"
-                                   :zOrder 2
+                                   :zIndex 2
                                    ;; I apologize for the magic number.
                                    :top (- -4
                                            (om/get-state owner :knob-yoffset))

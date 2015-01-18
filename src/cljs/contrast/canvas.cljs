@@ -55,4 +55,8 @@
 
     om/IRender
     (render [_]
-      (dom/canvas #js {:ref "canvas" :width width :height height}))))
+      (dom/canvas #js {:ref "canvas" :width width :height height
+                       :style
+                       #js {;; Without this, height is added to the containing
+                            ;; to make room for descenders.
+                            :verticalAlign "top"}}))))

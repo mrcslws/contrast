@@ -34,9 +34,11 @@
   (reify
     om/IWillMount
     (will-mount [_]
-      (go-loop []
-        (om/set-state! owner :imagedata (<! updates))
-        (recur)))
+      (let [updates-out (chan)]
+        (tap updates updates-out)
+        (go-loop []
+          (om/set-state! owner :imagedata (<! updates-out))
+          (recur))))
 
     om/IDidMount
     (did-mount [_]
@@ -52,11 +54,14 @@
                        :style #js {:position "absolute"
                                    :left 0 :top 0}
                        :ref "canvas"
-                       :onClick #(om/transact!
-                                  (:pixel-probe data)
-                                  (fn [c]
-                                    (assoc c
-                                      :fallback (coords %))))
+
+                       ;; TODO bring this back once I have a standard approach
+                       ;; to locking values
+                       ;; :onClick #(om/transact!
+                       ;;            (:pixel-probe data)
+                       ;;            (fn [c]
+                       ;;              (assoc c
+                       ;;                :fallback (coords %))))
                        :onMouseLeave #(om/transact!
                                       (:pixel-probe data)
                                       (fn [c]

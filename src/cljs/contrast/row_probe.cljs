@@ -8,15 +8,30 @@
 (def lens-overshot 10)
 (def lens-h 11)
 
-(defn on-move [_ owner]
+(defn on-move [{:keys [target schema]} owner]
   (fn [_ content-y]
-    (om/set-state! owner :lens-top content-y)))
+    (let [ch (.-offsetHeight (om/get-node owner "content"))
+          y (-> content-y
+                (max 0)
+                (min (dec ch)))]
+      (om/update! target (:key schema) y)
+      (om/set-state! owner :lens-top y))))
 
-(defn on-exit [data owner]
+(defn on-exit [{:keys [target schema]} owner]
   (fn [_ _]
-    (om/set-state! owner :lens-top nil)))
+    (let [v (get-in target [:locked (:key schema)])]
+      (om/update! target (:key schema) v)
+      (om/set-state! owner :lens-top v))))
 
-(defn row-probe [config owner]
+(defn on-click [{:keys [target schema]} owner]
+  (fn []
+    ;; TODO the locked value really needs to be indicated
+    (om/update! (:locked target) (:key schema)
+                (get target (:key schema)))))
+
+;; TODO: bug -- moving the cursor up the top of the image
+;; causes the probe to show up when content should be ignored
+(defn row-probe-component [config owner]
   (reify
     om/IInitState
     (init-state [_]
@@ -26,10 +41,12 @@
     om/IRenderState
     (render-state [_ {:keys [content data-key data-width data-min data-max
                              data-interval lens-top track-border-only?]}]
-      (tracking-area {:display "inline-block"}
+      (tracking-area nil
        {:on-move (on-move config owner)
         :on-exit (on-exit config owner)
+        :on-click (on-click config owner)
         :underlap-x 40
+        :underlap-y 10
         :track-border-only? track-border-only?
         :determine-width-from-contents? true}
        (dom/div #js {:style #js {:position "relative"
@@ -54,5 +71,14 @@
                                               "images/RowLensCenter.png"
                                               "images/RowLensRight.png" 6
                                               lens-h)))
-       (dom/div #js {:style #js {:position "relative"
+       (dom/div #js {:ref "content"
+                     :style #js {:position "relative"
                                  :zIndex 0}} content)))))
+
+(defn row-probe [style target schema {:keys [subscriber updates
+                                             track-border-only?]} content]
+  (dom/div #js {:style (clj->js style)}
+           (om/build row-probe-component {:target target :schema schema}
+                     {:init-state {:track-border-only? track-border-only?}
+                      :state {:content content}
+                      :opts {:subscriber subscriber :updates updates}})))

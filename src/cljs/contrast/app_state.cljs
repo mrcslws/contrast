@@ -8,11 +8,19 @@
                                     :str-format "%dpx"
                                     :interval 1}
 
+         :probed-row-schema {:key :probed-row}
+
          :single-linear-gradient {:width 600
                                   :height 256
                                   :transition-radius 50
-                                  :pixel-probe {:knob-width 4}}
+                                  :probed-row 150
+                                  :selected-color nil
+                                  :locked {}
+                                  :pixel-probe {}}
          :single-sinusoidal-gradient {:width 600
                                       :height 256
                                       :transition-radius 50
-                                      :pixel-probe {:knob-width 4}}}))
+                                      :probed-row 130
+                                      :selected-color nil
+                                      :locked {}
+                                      :pixel-probe {}}}))

@@ -71,14 +71,19 @@
                     :onMouseMove #(move-handler % owner)
                     :onMouseOut #(move-handler % owner)
                     :onClick #(click-handler % owner)
-                    :style #js {:display (if determine-width-from-contents?
+                    :style #js {;; TODO convince self that this is acceptable
+                                :display (if determine-width-from-contents?
                                            "inline-block"
                                            "block")
 
+
+                                ;; TODO explain and test
+                                :verticalAlign "top"
+                                
                                 :cursor (if on-click "pointer" "auto")
 
                                 ;; Include child element margins.
-                                ;; They won't be included in cases
+                                ;; Otherwise they won't be included in cases
                                 ;; where underlap is 0.
                                 :overflow "auto"
 
