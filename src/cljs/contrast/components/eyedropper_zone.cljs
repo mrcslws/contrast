@@ -2,7 +2,8 @@
   (:require [om.core :as om :include-macros true]
             [om.dom :as dom :include-macros true]
             [contrast.components.canvas :as cnv]
-            [contrast.components.tracking-area :refer [tracking-area]]))
+            [contrast.components.tracking-area :refer [tracking-area]]
+            [contrast.pixel :as pixel]))
 
 (defn set-color! [{:keys [target schema]} color]
   (om/update! target (:key schema) color))
@@ -10,17 +11,7 @@
 (defn on-move [config owner]
   (fn [content-x content-y]
     (when-let [imagedata (:imagedata config)]
-      (let [data (.-data imagedata)
-            ;; TODO dedupe
-            base (-> content-y
-                     (* (.-width imagedata))
-                     (+ content-x)
-                     (* 4))]
-        (set-color! config
-                    [(aget data base)
-                     (aget data (+ base 1))
-                     (aget data (+ base 2))
-                     (aget data (+ base 3))])))))
+      (set-color! config (pixel/get imagedata content-x content-y)))))
 
 (defn on-exit [config owner]
   (fn [_ _]

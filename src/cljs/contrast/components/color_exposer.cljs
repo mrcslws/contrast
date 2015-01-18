@@ -7,17 +7,13 @@
 
 (defn paint [{:keys [imagedata selected-color]} cnv]
   (let [ctx (.getContext cnv "2d")
-        spx (apply pixel/immutable-pixel selected-color)]
+        [r g b a] selected-color]
     (cnv/clear ctx)
     (when imagedata
-      (let [w (.-width imagedata)]
-        (let [len (pixel/pixel-count imagedata)]
-          (loop [i 0
-                 px (pixel/nth! imagedata i)]
-            (when (< i len)
-              (when (pixel/matches? px spx)
-                (cnv/fill-rect ctx (rem i w) (quot i w) 1 1 "blue"))
-              (recur (inc i) (pixel/pan! px 1)))))))))
+      (dotimes [x (.-width imagedata)]
+        (dotimes [y (.-height imagedata)]
+          (when (pixel/matches? imagedata x y r g b a)
+            (cnv/fill-rect ctx x y 1 1 "blue")))))))
 
 (defn color-exposer-component [config owner]
   (reify
@@ -41,7 +37,6 @@
                  (apply dom/div #js {:style #js {:position "relative"
                                                  :zIndex 0}}
                         content))))))
-
 
 (defn color-exposer [style config imagedata & content]
   ;; TODO this was failing to re-render when I built a {:color color} value :(

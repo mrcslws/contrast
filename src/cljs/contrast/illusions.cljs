@@ -1,8 +1,9 @@
 (ns contrast.illusions
   (:require [om.core :as om :include-macros true]
             [om.dom :as dom :include-macros true]
-            [contrast.components.canvas :as cnv])
-  (:require-macros [contrast.macros :refer [forloop]]))
+            [contrast.components.canvas :as cnv]
+            [contrast.pixel :as pixel])
+  (:require-macros [contrast.macros :refer [dorange]]))
 
 ;; TODO decomplect vertical `progress->color` from horizontal
 (defn two-sides-paint [progress->color]
@@ -11,40 +12,25 @@
           width (.-width cnv)
           height (.-height cnv)
           imagedata (.createImageData ctx width height)
-          data (.-data imagedata)
           start 0
           end 255
           middle 127
-          lx 0
-          tx (- (/ width 2) transition-radius)
-          tw (* 2 transition-radius)
-          rx (+ tx tw)]
-      (forloop [(row 0) (< row height) (inc row)]
-               (let [lcolor (progress->color middle start (/ row height))
-                     rcolor (progress->color middle end (/ row height))]
-                 ;; TODO make more declarative
-                 (forloop [(col lx) (< col tx) (inc col)]
-                          (let [base (-> row (* width) (+ col) (* 4))]
-                            (doto data
-                              (aset base lcolor)
-                              (aset (+ base 1) lcolor)
-                              (aset (+ base 2) lcolor)
-                              (aset (+ base 3) 255))))
-                 (forloop [(col rx) (< col width) (inc col)]
-                          (let [base (-> row (* width) (+ col) (* 4))]
-                            (doto data
-                              (aset base rcolor)
-                              (aset (+ base 1) rcolor)
-                              (aset (+ base 2) rcolor)
-                              (aset (+ base 3) 255))))
-                 (forloop [(col tx) (< col rx) (inc col)]
-                          (let [base (-> row (* width) (+ col) (* 4))
-                                c (progress->color lcolor rcolor (/ (- col tx) tw))]
-                            (doto data
-                              (aset base c)
-                              (aset (+ base 1) c)
-                              (aset (+ base 2) c)
-                              (aset (+ base 3) 255))))))
+          leftx 0
+          transx (- (/ width 2) transition-radius)
+          transw (* 2 transition-radius)
+          rightx (+ transx transw)]
+
+      (dotimes [row height]
+        (let [lcolor (progress->color middle start (/ row height))
+              rcolor (progress->color middle end (/ row height))]
+          (dorange [col leftx transx]
+                   (pixel/write! imagedata col row lcolor lcolor lcolor 255))
+          (dorange [col rightx width]
+                   (pixel/write! imagedata col row rcolor rcolor rcolor 255))
+          (dorange [col transx rightx]
+                   (let [c (progress->color lcolor rcolor (/ (- col transx)
+                                                             transw))]
+                     (pixel/write! imagedata col row c c c 255)))))
       (.putImageData ctx imagedata 0 0)
       imagedata)))
 
@@ -53,10 +39,11 @@
     (reify
       om/IRender
       (render [_]
-        (om/build cnv/canvas config {:opts {:subscriber subscriber
-                                            :width (:width config)
-                                            :height (:height config)
-                                            :fpaint (two-sides-paint progress->color)}})))))
+        (om/build cnv/canvas config
+                  {:opts {:subscriber subscriber
+                          :width (:width config)
+                          :height (:height config)
+                          :fpaint (two-sides-paint progress->color)}})))))
 
 (defn linear-gradient [start end progress]
   (-> progress

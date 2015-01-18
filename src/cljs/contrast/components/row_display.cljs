@@ -1,8 +1,8 @@
 (ns contrast.components.row-display
   (:require [om.core :as om :include-macros true]
             [om.dom :as dom :include-macros true]
-            [contrast.components.canvas :as cnv])
-  (:require-macros [contrast.macros :refer [forloop]]))
+            [contrast.components.canvas :as cnv]
+            [contrast.pixel :as pixel]))
 
 (defn paint [owner]
   (fn [{target :target schema :schema stalkee :imagedata}  cnv]
@@ -13,7 +13,6 @@
         (let [width (.-width cnv)
               height (.-height cnv)
               imagedata (.createImageData ctx width height)
-              data (.-data imagedata)
               sw (.-width stalkee)
               sh (.-height stalkee)
               sd (.-data stalkee)
@@ -23,19 +22,10 @@
 
           (assert (< sr sh))
 
-          (forloop [(row 0) (< row height) (inc row)]
-                   (forloop [(col 0) (< col width) (inc col)]
-                            (let [sbase (-> sr (* sw) (+ col) (* 4))
-                                  base (-> row (* width) (+ col) (* 4))]
-                              (doto data
-                                (aset base
-                                      (aget sd sbase))
-                                (aset (+ base 1)
-                                      (aget sd (+ sbase 1)))
-                                (aset (+ base 2)
-                                      (aget sd (+ sbase 2)))
-                                (aset (+ base 3)
-                                      (aget sd (+ sbase 3)))))))
+          (dotimes [row height]
+            (dotimes [col width]
+              (pixel/copy! imagedata col row
+                           stalkee col sr)))
           (.putImageData ctx imagedata 0 0))))))
 
 (defn row-display-component [config owner {:keys [subscriber]}]

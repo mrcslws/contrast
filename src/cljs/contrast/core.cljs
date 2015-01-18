@@ -85,5 +85,6 @@
                 "Put something around the image so that it's clear where the row-probe works.")
                ))))
 
+
 (defn main []
   (om/root conjurer state/app-state {:target (.getElementById js/document "app")}))
