@@ -1,12 +1,12 @@
-(ns contrast.slider
+(ns contrast.components.slider
   (:require [om.core :as om :include-macros true]
             [om.dom :as dom :include-macros true]
             [cljs.core.async :refer [timeout <!]]
             [goog.string :as gstring]
             [goog.string.format]
             [contrast.dom :as domh]
-            [contrast.common :refer [wide-background-image background-image
-                                     tracking-area]])
+            [contrast.common :refer [wide-background-image background-image]]
+            [contrast.components.tracking-area :refer [tracking-area]])
   (:require-macros [cljs.core.async.macros :refer [go-loop]]))
 
 (def wknob 13)

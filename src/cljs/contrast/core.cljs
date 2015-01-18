@@ -3,14 +3,14 @@
             [om.dom :as dom :include-macros true]
             [cljs.core.async :refer [put! chan mult tap close! <!]]
             [contrast.app-state :as state]
-            [contrast.canvas :as cnv]
-            [contrast.slider :refer [slider]]
+            [contrast.components.canvas :as cnv]
+            [contrast.components.slider :refer [slider]]
             [contrast.illusions :as illusions]
-            [contrast.row-probe :refer [row-probe]]
-            [contrast.row-display :refer [row-display]]
+            [contrast.components.row-probe :refer [row-probe]]
+            [contrast.components.row-display :refer [row-display]]
             [contrast.dom :as domh]
-            [contrast.color-exposer :refer [color-exposer]]
-            [contrast.eyedropper-zone :refer [eyedropper-zone]])
+            [contrast.components.color-exposer :refer [color-exposer]]
+            [contrast.components.eyedropper-zone :refer [eyedropper-zone]])
   (:require-macros [cljs.core.async.macros :refer [go go-loop alt!]]))
 
 (defn probed-illusion [illusion]

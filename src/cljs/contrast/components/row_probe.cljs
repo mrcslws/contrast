@@ -1,9 +1,9 @@
-(ns contrast.row-probe
+(ns contrast.components.row-probe
   (:require [om.core :as om :include-macros true]
             [om.dom :as dom :include-macros true]
             [contrast.dom :as domh]
-            [contrast.common :refer [wide-background-image
-                                     tracking-area]]))
+            [contrast.components.tracking-area :refer [tracking-area]]
+            [contrast.common :refer [wide-background-image]]))
 
 (def lens-overshot 10)
 (def lens-h 11)

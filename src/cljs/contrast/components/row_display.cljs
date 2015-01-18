@@ -1,9 +1,9 @@
-(ns contrast.row-display
+(ns contrast.components.row-display
   (:require [om.core :as om :include-macros true]
             [om.dom :as dom :include-macros true]
             [cljs.core.async :refer [put! chan mult tap close! <!]]
             [contrast.app-state :as state]
-            [contrast.canvas :as cnv]
+            [contrast.components.canvas :as cnv]
             [contrast.illusions :as illusions]
             [contrast.dom :as domh])
   (:require-macros [cljs.core.async.macros :refer [go go-loop alt!]]

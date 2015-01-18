@@ -1,4 +1,4 @@
-(ns contrast.canvas
+(ns contrast.components.canvas
   (:require [om.core :as om :include-macros true]
             [om.dom :as dom :include-macros true]
             [cljs.core.async :refer [put! chan mult tap close! <! pipeline]]

@@ -1,14 +1,14 @@
-(ns contrast.eyedropper-zone
+(ns contrast.components.eyedropper-zone
   (:require [om.core :as om :include-macros true]
             [om.dom :as dom :include-macros true]
             [cljs.core.async :refer [put! chan mult tap close! <!]]
             [contrast.app-state :as state]
-            [contrast.canvas :as cnv]
-            [contrast.slider :refer [slider]]
+            [contrast.components.canvas :as cnv]
+            [contrast.components.slider :refer [slider]]
             [contrast.illusions :as illusions]
-            [contrast.row-probe :refer [row-probe]]
+            [contrast.components.row-probe :refer [row-probe]]
             [contrast.dom :as domh]
-            [contrast.common :refer [tracking-area]])
+            [contrast.components.tracking-area :refer [tracking-area]])
   (:require-macros [cljs.core.async.macros :refer [go go-loop alt!]]
                    [contrast.macros :refer [forloop]]))
 
