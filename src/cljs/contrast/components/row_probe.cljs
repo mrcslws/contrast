@@ -17,11 +17,14 @@
       (om/update! target (:key schema) y)
       (om/set-state! owner :lens-top y))))
 
-(defn on-exit [{:keys [target schema]} owner]
+(defn revert-to-locked! [{:keys [target schema]} owner]
+  (let [v (get-in target [:locked (:key schema)])]
+    (om/update! target (:key schema) v)
+    (om/set-state! owner :lens-top v)))
+
+(defn on-exit [config owner]
   (fn [_ _]
-    (let [v (get-in target [:locked (:key schema)])]
-      (om/update! target (:key schema) v)
-      (om/set-state! owner :lens-top v))))
+    (revert-to-locked! config owner)))
 
 (defn on-click [{:keys [target schema]} owner]
   (fn []
@@ -37,6 +40,10 @@
     (init-state [_]
       {:lens-top nil
        :track-border-only? false})
+
+    om/IWillMount
+    (will-mount [_]
+      (revert-to-locked! config owner))
 
     om/IRenderState
     (render-state [_ {:keys [content data-key data-width data-min data-max
@@ -75,10 +82,8 @@
                      :style #js {:position "relative"
                                  :zIndex 0}} content)))))
 
-(defn row-probe [style target schema {:keys [subscriber updates
-                                             track-border-only?]} content]
+(defn row-probe [style target schema {:keys [track-border-only?]} content]
   (dom/div #js {:style (clj->js style)}
            (om/build row-probe-component {:target target :schema schema}
                      {:init-state {:track-border-only? track-border-only?}
-                      :state {:content content}
-                      :opts {:subscriber subscriber :updates updates}})))
+                      :state {:content content}})))

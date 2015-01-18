@@ -18,38 +18,43 @@
     (reify
       om/IInitState
       (init-state [_]
-        (let [to-mult (chan)
-              ;; TODO terrible
-              to-mult2 (chan)]
-          {:updates-in to-mult
-           :updates (mult to-mult)
-           :rd-updates-in to-mult2
-           :rd-updates (mult to-mult2)}))
+        {:illusion-updates (chan)
+         :row-display-updates (chan)})
+
+      om/IWillMount
+      (will-mount [_]
+        (let [{:keys [illusion-updates row-display-updates]} (om/get-state owner)]
+          (go-loop []
+            (om/set-state! owner :illusion-imagedata (<! illusion-updates))
+            (recur))
+
+          (go-loop []
+            (om/set-state! owner :row-display-imagedata (<! row-display-updates))
+            (recur))))
 
       om/IRenderState
-      (render-state [_ {:keys [updates updates-in rd-updates rd-updates-in]}]
+      (render-state [_ {:keys [illusion-updates row-display-updates
+                               illusion-imagedata row-display-imagedata]}]
         (dom/div nil
 
-                 ;; TODO it's not getting the imagedata until the image updates once
-
-                 (->> (row-display nil config {:key :probed-row}
-                                   {:subscriber rd-updates-in
-                                    :updates updates})
-                      (color-exposer nil config rd-updates)
-                      (eyedropper-zone nil config {:key :selected-color} rd-updates)
+                 ;; TODO it's not getting the imagedata until the image updates
+                 ;; once
+                 (->> (row-display nil config {:key :probed-row} illusion-imagedata
+                                   {:subscriber row-display-updates})
+                      (color-exposer nil config row-display-imagedata)
+                      (eyedropper-zone nil config {:key :selected-color}
+                                       row-display-imagedata)
                       (dom/div #js {:style #js {:marginBottom 20}}))
 
                  (->> (om/build illusion
                                 (select-keys config [:width :height
                                                      :transition-radius])
-                                {:opts {:subscriber updates-in}})
-                      (color-exposer nil config updates)
+                                {:opts {:subscriber illusion-updates}})
+                      (color-exposer nil config illusion-imagedata)
                       ;; TODO refer to the actual schema. Oh god this was dumb.
-                      (eyedropper-zone nil config {:key :selected-color} updates)
-                      (row-probe nil config {:key :probed-row}
-                                 {:subscriber rd-updates-in
-                                  :updates updates
-                                  :track-border-only? true})))))))
+                      (eyedropper-zone nil config {:key :selected-color}
+                                       illusion-imagedata)
+                      (row-probe nil config {:key :probed-row} {:track-border-only? true})))))))
 
 (def probed-linear (probed-illusion illusions/single-linear-gradient))
 (def probed-sinusoidal (probed-illusion illusions/single-sinusoidal-gradient))

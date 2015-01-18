@@ -1,11 +1,8 @@
 (ns contrast.illusions
   (:require [om.core :as om :include-macros true]
             [om.dom :as dom :include-macros true]
-            [cljs.core.async :refer [put! chan mult tap close! <!]]
-            [contrast.components.slider :refer [slider]]
             [contrast.components.canvas :as cnv])
-  (:require-macros [cljs.core.async.macros :refer [go go-loop alt!]]
-                   [contrast.macros :refer [forloop]]))
+  (:require-macros [contrast.macros :refer [forloop]]))
 
 ;; TODO decomplect vertical `progress->color` from horizontal
 (defn two-sides-paint [progress->color]

@@ -74,9 +74,6 @@
       js/Math.round
       (str "%")))
 
-
-;; (defn slider [])
-
 ;; TODO:
 ;; - Discover what's reusable between this and row-probe
 ;; - Touch compatibility

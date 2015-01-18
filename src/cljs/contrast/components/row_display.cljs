@@ -1,19 +1,13 @@
 (ns contrast.components.row-display
   (:require [om.core :as om :include-macros true]
             [om.dom :as dom :include-macros true]
-            [cljs.core.async :refer [put! chan mult tap close! <!]]
-            [contrast.app-state :as state]
-            [contrast.components.canvas :as cnv]
-            [contrast.illusions :as illusions]
-            [contrast.dom :as domh])
-  (:require-macros [cljs.core.async.macros :refer [go go-loop alt!]]
-                   [contrast.macros :refer [forloop]]))
+            [contrast.components.canvas :as cnv])
+  (:require-macros [contrast.macros :refer [forloop]]))
 
 (defn paint [owner]
-  (fn [{:keys [target schema]} cnv]
+  (fn [{target :target schema :schema stalkee :imagedata}  cnv]
     (let [ctx (.getContext cnv "2d")
-          sr (get target (:key schema))
-          stalkee (om/get-state owner :imagedata)]
+          sr (get target (:key schema))]
       (cnv/clear ctx)
       (when (and sr stalkee)
         (let [width (.-width cnv)
@@ -44,16 +38,8 @@
                                       (aget sd (+ sbase 3)))))))
           (.putImageData ctx imagedata 0 0))))))
 
-(defn row-display-component [config owner {:keys [subscriber updates]}]
+(defn row-display-component [config owner {:keys [subscriber]}]
   (reify
-    om/IWillMount
-    (will-mount [_]
-      (let [updates-out (chan)]
-        (tap updates updates-out)
-        (go-loop []
-          (om/set-state! owner :imagedata (<! updates-out))
-          (recur))))
-
     om/IRender
     (render [_]
       (dom/div {:onMouseMove #(om/set-state! owner :force-update 1)}
@@ -62,9 +48,9 @@
                                  :fpaint (paint owner)
                                  :subscriber subscriber}})))))
 
-(defn row-display [style target schema {:keys [subscriber updates]}]
+(defn row-display [style target schema imagedata {:keys [subscriber]}]
   (dom/div #js {:style (clj->js style)}
            (om/build row-display-component
-                     {:target target :schema schema}
-                     {:opts {:subscriber subscriber
-                             :updates updates}})))
+                     {:target target :schema schema
+                      :imagedata imagedata}
+                     {:opts {:subscriber subscriber}})))

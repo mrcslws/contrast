@@ -13,12 +13,10 @@
          :single-linear-gradient {:width 600
                                   :height 256
                                   :transition-radius 50
-                                  :probed-row 150
                                   :selected-color nil
-                                  :locked {}}
+                                  :locked {:probed-row 150}}
          :single-sinusoidal-gradient {:width 600
                                       :height 256
                                       :transition-radius 50
-                                      :probed-row 130
                                       :selected-color nil
-                                      :locked {}}}))
+                                      :locked {:probed-row 130}}}))

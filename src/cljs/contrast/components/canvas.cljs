@@ -1,7 +1,7 @@
 (ns contrast.components.canvas
   (:require [om.core :as om :include-macros true]
             [om.dom :as dom :include-macros true]
-            [cljs.core.async :refer [put! chan mult tap close! <! pipeline]]
+            [cljs.core.async :refer [put!]]
             [contrast.pixel :as pixel])
   (:require-macros [cljs.core.async.macros :refer [go go-loop alt!]]))
 

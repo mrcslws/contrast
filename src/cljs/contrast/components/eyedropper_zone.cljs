@@ -1,23 +1,15 @@
 (ns contrast.components.eyedropper-zone
   (:require [om.core :as om :include-macros true]
             [om.dom :as dom :include-macros true]
-            [cljs.core.async :refer [put! chan mult tap close! <!]]
-            [contrast.app-state :as state]
             [contrast.components.canvas :as cnv]
-            [contrast.components.slider :refer [slider]]
-            [contrast.illusions :as illusions]
-            [contrast.components.row-probe :refer [row-probe]]
-            [contrast.dom :as domh]
-            [contrast.components.tracking-area :refer [tracking-area]])
-  (:require-macros [cljs.core.async.macros :refer [go go-loop alt!]]
-                   [contrast.macros :refer [forloop]]))
+            [contrast.components.tracking-area :refer [tracking-area]]))
 
 (defn set-color! [{:keys [target schema]} color]
   (om/update! target (:key schema) color))
 
 (defn on-move [config owner]
   (fn [content-x content-y]
-    (when-let [imagedata (om/get-state owner :imagedata)]
+    (when-let [imagedata (:imagedata config)]
       (let [data (.-data imagedata)
             ;; TODO dedupe
             base (-> content-y
@@ -36,14 +28,6 @@
 
 (defn eyedropper-zone-component [config owner {:keys [updates]}]
   (reify
-    om/IWillMount
-    (will-mount [_]
-      (let [updates-out (chan)]
-        (tap updates updates-out)
-        (go-loop []
-          (om/set-state! owner :imagedata (<! updates-out))
-          (recur))))
-
     om/IRenderState
     (render-state [_ {:keys [content]}]
       (apply tracking-area nil
@@ -52,8 +36,8 @@
               :determine-width-from-contents? true}
              content))))
 
-(defn eyedropper-zone [style target schema updates & content]
+(defn eyedropper-zone [style target schema imagedata & content]
   (dom/div #js {:style (clj->js style)}
-           (om/build eyedropper-zone-component {:target target :schema schema}
-                     {:state {:content content}
-                      :opts {:updates updates}})))
+           (om/build eyedropper-zone-component
+                     {:target target :schema schema :imagedata imagedata}
+                     {:state {:content content}})))

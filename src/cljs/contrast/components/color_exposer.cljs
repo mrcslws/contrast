@@ -1,46 +1,31 @@
 (ns contrast.components.color-exposer
   (:require [om.core :as om :include-macros true]
             [om.dom :as dom :include-macros true]
-            [cljs.core.async :refer [put! chan mult tap close! <!]]
-            [contrast.app-state :as state]
             [contrast.components.canvas :as cnv]
             [contrast.pixel :as pixel]
-            [contrast.components.row-probe :refer [row-probe]]
-            [contrast.dom :as domh]
-            [contrast.components.tracking-area :refer [tracking-area]])
-  (:require-macros [cljs.core.async.macros :refer [go go-loop alt!]]
-                   [contrast.macros :refer [forloop]]))
+            [contrast.components.tracking-area :refer [tracking-area]]))
 
-(defn paint [data owner]
-  (fn [data cnv]
-    (let [ctx (.getContext cnv "2d")
-          spx (apply pixel/immutable-pixel (:selected-color data))
-          imagedata (om/get-state owner :imagedata)]
-      (cnv/clear ctx)
-      (when imagedata
-        (let [w (.-width imagedata)]
-          (let [len (pixel/pixel-count imagedata)]
-            (loop [i 0
-                   px (pixel/nth! imagedata i)]
-              (when (< i len)
-                (when (pixel/matches? px spx)
-                  (cnv/fill-rect ctx (rem i w) (quot i w) 1 1 "blue"))
-                (recur (inc i) (pixel/pan! px 1))))))))))
+(defn paint [{:keys [imagedata selected-color]} cnv]
+  (let [ctx (.getContext cnv "2d")
+        spx (apply pixel/immutable-pixel selected-color)]
+    (cnv/clear ctx)
+    (when imagedata
+      (let [w (.-width imagedata)]
+        (let [len (pixel/pixel-count imagedata)]
+          (loop [i 0
+                 px (pixel/nth! imagedata i)]
+            (when (< i len)
+              (when (pixel/matches? px spx)
+                (cnv/fill-rect ctx (rem i w) (quot i w) 1 1 "blue"))
+              (recur (inc i) (pixel/pan! px 1)))))))))
 
-(defn color-exposer-component [config owner {:keys [updates]}]
+(defn color-exposer-component [config owner]
   (reify
-    om/IWillMount
-    (will-mount [_]
-      ;; TODO I've copy-pasted this function in multiple places
-      (let [updates-out (chan)]
-        (tap updates updates-out)
-        (go-loop []
-          (om/set-state! owner :imagedata (<! updates-out))
-          (recur))))
 
     om/IRenderState
-    (render-state [_ {:keys [imagedata content]}]
-      (let [[w h] (if imagedata
+    (render-state [_ {:keys [content]}]
+      (let [imagedata (:imagedata config)
+            [w h] (if imagedata
                     [(.-width imagedata) (.-height imagedata)]
                     [nil nil])]
         (dom/div #js {:style #js {:display "inline-block"
@@ -50,7 +35,7 @@
                                            :width "100%"
                                            :height "100%"
                                            :zIndex 1}}
-                          (om/build cnv/canvas config {:opts {:fpaint (paint config owner)
+                          (om/build cnv/canvas config {:opts {:fpaint paint
                                                               :width w
                                                               :height h}}))
                  (apply dom/div #js {:style #js {:position "relative"
@@ -58,9 +43,9 @@
                         content))))))
 
 
-(defn color-exposer [style config updates & content]
+(defn color-exposer [style config imagedata & content]
   ;; TODO this was failing to re-render when I built a {:color color} value :(
   (dom/div #js {:style (clj->js style)}
-           (om/build color-exposer-component config ;; {:color color}
-                     {:state {:content content}
-                      :opts {:updates updates}})))
+           (om/build color-exposer-component (assoc config
+                                               :imagedata imagedata) ;; {:color color}
+                     {:state {:content content}})))
