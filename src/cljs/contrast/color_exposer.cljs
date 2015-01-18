@@ -6,10 +6,8 @@
             [contrast.canvas :as cnv]
             [contrast.slider :refer [slider]]
             [contrast.illusions :as illusions]
-            [contrast.pixel-probe :refer [pixel-probe]]
             [contrast.pixel :as pixel]
             [contrast.row-probe :refer [row-probe]]
-            [contrast.layeredcanvas :refer [layered-canvas]]
             [contrast.dom :as domh]
             [contrast.common :refer [tracking-area]])
   (:require-macros [cljs.core.async.macros :refer [go go-loop alt!]]

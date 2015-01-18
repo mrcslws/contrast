@@ -4,11 +4,7 @@
             [cljs.core.async :refer [put! chan mult tap close! <!]]
             [contrast.app-state :as state]
             [contrast.canvas :as cnv]
-            [contrast.slider :refer [slider]]
             [contrast.illusions :as illusions]
-            [contrast.pixel-probe :refer [pixel-probe]]
-            [contrast.row-probe :refer [row-probe]]
-            [contrast.layeredcanvas :refer [layered-canvas]]
             [contrast.dom :as domh])
   (:require-macros [cljs.core.async.macros :refer [go go-loop alt!]]
                    [contrast.macros :refer [forloop]]))

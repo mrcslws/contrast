@@ -3,8 +3,7 @@
             [om.dom :as dom :include-macros true]
             [cljs.core.async :refer [put! chan mult tap close! <!]]
             [contrast.slider :refer [slider]]
-            [contrast.canvas :as cnv]
-            [contrast.layeredcanvas :refer [layered-canvas]])
+            [contrast.canvas :as cnv])
   (:require-macros [cljs.core.async.macros :refer [go go-loop alt!]]
                    [contrast.macros :refer [forloop]]))
 

@@ -6,10 +6,8 @@
             [contrast.canvas :as cnv]
             [contrast.slider :refer [slider]]
             [contrast.illusions :as illusions]
-            [contrast.pixel-probe :refer [pixel-probe]]
             [contrast.row-probe :refer [row-probe]]
             [contrast.row-display :refer [row-display]]
-            [contrast.layeredcanvas :refer [layered-canvas]]
             [contrast.dom :as domh]
             [contrast.color-exposer :refer [color-exposer]]
             [contrast.eyedropper-zone :refer [eyedropper-zone]])

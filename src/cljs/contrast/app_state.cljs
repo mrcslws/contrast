@@ -15,12 +15,10 @@
                                   :transition-radius 50
                                   :probed-row 150
                                   :selected-color nil
-                                  :locked {}
-                                  :pixel-probe {}}
+                                  :locked {}}
          :single-sinusoidal-gradient {:width 600
                                       :height 256
                                       :transition-radius 50
                                       :probed-row 130
                                       :selected-color nil
-                                      :locked {}
-                                      :pixel-probe {}}}))
+                                      :locked {}}}))
