@@ -5,11 +5,11 @@ goog.addDependency("../clojure/browser/net.js", ['clojure.browser.net'], ['goog.
 goog.addDependency("../weasel/impls/websocket.js", ['weasel.impls.websocket'], ['cljs.core', 'clojure.browser.net', 'goog.net.WebSocket', 'clojure.browser.event']);
 goog.addDependency("../cljs/reader.js", ['cljs.reader'], ['goog.string', 'cljs.core', 'goog.string.StringBuffer']);
 goog.addDependency("../weasel/repl.js", ['weasel.repl'], ['weasel.impls.websocket', 'cljs.core', 'clojure.browser.net', 'cljs.reader', 'clojure.browser.event']);
-goog.addDependency("../contrast/app_state.js", ['contrast.app_state'], ['cljs.core']);
-goog.addDependency("../contrast/pixel.js", ['contrast.pixel'], ['cljs.core']);
 goog.addDependency("../om/dom.js", ['om.dom'], ['cljs.core', 'goog.object']);
-goog.addDependency("../contrast/dom.js", ['contrast.dom'], ['cljs.core']);
 goog.addDependency("../om/core.js", ['om.core'], ['goog.dom', 'cljs.core', 'om.dom', 'goog.ui.IdGenerator']);
+goog.addDependency("../contrast/app_state.js", ['contrast.app_state'], ['cljs.core', 'om.core']);
+goog.addDependency("../contrast/pixel.js", ['contrast.pixel'], ['cljs.core']);
+goog.addDependency("../contrast/dom.js", ['contrast.dom'], ['cljs.core']);
 goog.addDependency("../contrast/components/tracking_area.js", ['contrast.components.tracking_area'], ['cljs.core', 'om.dom', 'contrast.dom', 'om.core']);
 goog.addDependency("../cljs/core/async/impl/protocols.js", ['cljs.core.async.impl.protocols'], ['cljs.core']);
 goog.addDependency("../cljs/core/async/impl/buffers.js", ['cljs.core.async.impl.buffers'], ['cljs.core', 'cljs.core.async.impl.protocols']);

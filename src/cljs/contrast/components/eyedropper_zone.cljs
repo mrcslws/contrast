@@ -27,8 +27,7 @@
               :determine-width-from-contents? true}
              content))))
 
-(defn eyedropper-zone [style target schema imagedata & content]
-  (dom/div #js {:style (clj->js style)}
-           (om/build eyedropper-zone-component
-                     {:target target :schema schema :imagedata imagedata}
-                     {:state {:content content}})))
+(defn eyedropper-zone [target schema imagedata & content]
+  (om/build eyedropper-zone-component
+            {:target target :schema schema :imagedata imagedata}
+            {:state {:content content}}))

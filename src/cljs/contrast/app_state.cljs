@@ -1,22 +1,21 @@
-(ns contrast.app-state)
+(ns contrast.app-state
+  (:require [om.core :as om :include-macros true]))
 
 ;; TODO switch away from "radius". "width" or "diameter" are better.
+
 (defonce app-state
-  (atom {:transition-radius-schema {:key :transition-radius
-                                    :min 0
-                                    :max 300
-                                    :str-format "%dpx"
-                                    :interval 1}
-
-         :probed-row-schema {:key :probed-row}
-
-         :single-linear-gradient {:width 600
+  (atom {:single-linear-gradient {:width 600
                                   :height 256
-                                  :transition-radius 50
+                                  :transition-radius 250
                                   :selected-color nil
-                                  :locked {:probed-row 150}}
+                                  :locked {:probed-row 30}}
          :single-sinusoidal-gradient {:width 600
                                       :height 256
-                                      :transition-radius 50
+                                      :transition-radius 250
                                       :selected-color nil
-                                      :locked {:probed-row 130}}}))
+                                      :locked {:probed-row 30}}
+         :sweep-grating {:width 600
+                         :height 256
+                         :contrast 10
+                         :selected-color nil
+                         :locked {:probed-row 30}}}))

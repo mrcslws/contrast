@@ -2,6 +2,6 @@ body {
     font-family: "Verdana", "Helvetica", "Arial", sans-serif;
 }
 
-p {
+p, ul, ol {
     font-size: 13px;
 }

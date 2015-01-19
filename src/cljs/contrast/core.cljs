@@ -39,27 +39,27 @@
 
                  ;; TODO it's not getting the imagedata until the image updates
                  ;; once
-                 (->> (row-display nil config {:key :probed-row} illusion-imagedata
+                 (->> (row-display config {:key :probed-row} illusion-imagedata
                                    {:subscriber row-display-updates})
-                      (color-exposer nil config row-display-imagedata)
-                      (eyedropper-zone nil config {:key :selected-color}
+                      (color-exposer config row-display-imagedata)
+                      (eyedropper-zone config {:key :selected-color}
                                        row-display-imagedata)
                       (dom/div #js {:style #js {:marginBottom 20}}))
 
                  (->> (om/build illusion
-                                (select-keys config [:width :height
-                                                     :transition-radius])
+                                config
                                 {:opts {:subscriber illusion-updates}})
-                      (color-exposer nil config illusion-imagedata)
-                      ;; TODO refer to the actual schema. Oh god this was dumb.
-                      (eyedropper-zone nil config {:key :selected-color}
+                      (color-exposer config illusion-imagedata)
+                      (eyedropper-zone config {:key :selected-color}
                                        illusion-imagedata)
-                      (row-probe nil config {:key :probed-row} {:track-border-only? true})))))))
+                      (row-probe config {:key :probed-row}
+                                 {:track-border-only? true})))))))
 
 (def probed-linear (probed-illusion illusions/single-linear-gradient))
 (def probed-sinusoidal (probed-illusion illusions/single-sinusoidal-gradient))
+(def probed-grating (probed-illusion illusions/grating))
 
-(defn conjurer [app owner]
+(defn single-gradient [app owner]
   (reify
     om/IRender
     (render [_]
@@ -74,17 +74,35 @@
                          (:single-sinusoidal-gradient app))
                (slider {:width 280 :marginLeft 140}
                        (:single-sinusoidal-gradient app)
-                       (:transition-radius-schema app))
+                       {:key :transition-radius
+                        :min 0
+                        :max 300
+                        :str-format "%dpx"
+                        :interval 1})))))
 
-               (dom/p
-                nil
-                "Needs to be fun to look at! That might be the main reason to use a grating.")
+(defn sweep-grating [app owner]
+  (reify
+    om/IRender
+    (render [_]
+      (dom/div #js {:style #js {:marginLeft 40}}
+               (om/build probed-grating
+                         (:sweep-grating app))
+               (slider {:width 280 :marginLeft 140}
+                       (:sweep-grating app)
+                       {:key :contrast
+                        :min 0
+                        :max 128
+                        :str-format "%.1f rgb units"
+                        :interval 0.5})))))
 
-               (dom/p
-                nil
-                "Put something around the image so that it's clear where the row-probe works.")
-               ))))
-
+(defn app-state-display [app owner]
+  (reify
+    om/IRender
+    (render [_]
+      (dom/div nil
+               (pr-str app)))))
 
 (defn main []
-  (om/root conjurer state/app-state {:target (.getElementById js/document "app")}))
+  (om/root single-gradient state/app-state {:target (.getElementById js/document "1-twosides")})
+  (om/root sweep-grating state/app-state {:target (.getElementById js/document "2-sweep-grating")})
+  (om/root app-state-display state/app-state {:target (.getElementById js/document "app-state")}))

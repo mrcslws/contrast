@@ -38,9 +38,8 @@
                                                  :zIndex 0}}
                         content))))))
 
-(defn color-exposer [style config imagedata & content]
+(defn color-exposer [config imagedata & content]
   ;; TODO this was failing to re-render when I built a {:color color} value :(
-  (dom/div #js {:style (clj->js style)}
-           (om/build color-exposer-component (assoc config
-                                               :imagedata imagedata) ;; {:color color}
-                     {:state {:content content}})))
+  (om/build color-exposer-component (assoc config
+                                      :imagedata imagedata) ;; {:color color}
+            {:state {:content content}}))

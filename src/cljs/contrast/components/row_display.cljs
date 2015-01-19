@@ -38,9 +38,8 @@
                                  :fpaint (paint owner)
                                  :subscriber subscriber}})))))
 
-(defn row-display [style target schema imagedata {:keys [subscriber]}]
-  (dom/div #js {:style (clj->js style)}
-           (om/build row-display-component
-                     {:target target :schema schema
-                      :imagedata imagedata}
-                     {:opts {:subscriber subscriber}})))
+(defn row-display [target schema imagedata {:keys [subscriber]}]
+  (om/build row-display-component
+            {:target target :schema schema
+             :imagedata imagedata}
+            {:opts {:subscriber subscriber}}))

@@ -82,8 +82,7 @@
                      :style #js {:position "relative"
                                  :zIndex 0}} content)))))
 
-(defn row-probe [style target schema {:keys [track-border-only?]} content]
-  (dom/div #js {:style (clj->js style)}
-           (om/build row-probe-component {:target target :schema schema}
-                     {:init-state {:track-border-only? track-border-only?}
-                      :state {:content content}})))
+(defn row-probe [target schema {:keys [track-border-only?]} content]
+  (om/build row-probe-component {:target target :schema schema}
+            {:init-state {:track-border-only? track-border-only?}
+             :state {:content content}}))

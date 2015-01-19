@@ -1,6 +1,7 @@
 target
 out
-app.js
+docs
+./*app.js
 
 .*
 !.gitignore
