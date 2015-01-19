@@ -4,7 +4,9 @@
 ;; TODO switch away from "radius". "width" or "diameter" are better.
 
 (defonce app-state
-  (atom {:single-linear-gradient {:width 600
+  (atom {:hood-open? false
+
+         :single-linear-gradient {:width 600
                                   :height 256
                                   :transition-radius 250
                                   :selected-color nil

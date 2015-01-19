@@ -1,6 +1,8 @@
 (ns contrast.core
   (:require [om.core :as om :include-macros true]
             [om.dom :as dom :include-macros true]
+            [goog.events :as events]
+            [goog.events.KeyCodes :as gkeys]
             [cljs.core.async :refer [put! chan mult tap close! <!]]
             [contrast.app-state :as state]
             [contrast.components.canvas :as cnv]
@@ -95,12 +97,55 @@
                         :str-format "%.1f rgb units"
                         :interval 0.5})))))
 
+(defn app-state->html [s]
+  (if (map? s)
+    (dom/div nil
+             (dom/div #js {:style #js {:display "inline-block"
+                                       :height "100%"
+                                       :verticalAlign "top"}}
+                      "{")
+             (apply dom/div #js {:style #js {:display "inline-block"}}
+                    (for [[k v] s]
+                      (dom/div nil
+                               (dom/div #js {:style #js {:verticalAlign "top"
+                                                         :display "inline-block"}}
+                                        (pr-str k))
+                               (dom/div #js {:style #js {:marginLeft 6
+                                                         :display "inline-block"}}
+                                        (app-state->html v)))))
+             (dom/div #js {:style #js {:display "inline-block"
+                                       :height "100%"
+                                       :verticalAlign "bottom"}}
+                      "}"))
+    (dom/div nil (pr-str s))))
+
 (defn app-state-display [app owner]
   (reify
+    om/IWillMount
+    (will-mount [_]
+      ;;eventkey
+      ;; (events/listen js/document.body "keypress" #(put! port %1))
+      (om/set-state! owner :keypress-eventkey
+                     (events/listen js/document.body
+                                    "keypress"
+                                    (fn [e]
+                                      (when (= (.-charCode e) gkeys/QUESTION_MARK)
+                                        (-> (js/document.getElementById "hood-config")
+                                            .-classList
+                                            (cond->
+                                             (:hood-open? @app)
+                                             (.remove "hood-open")
+
+                                             (not (:hood-open? @app))
+                                             (.add "hood-open")))
+                                        (om/transact! app :hood-open? not))))))
+    om/IWillUnmount
+    (will-unmount [_]
+      (events/unlistenByKey (om/get-state owner :keypress-eventkey)))
+
     om/IRender
     (render [_]
-      (dom/div nil
-               (pr-str app)))))
+      (app-state->html app))))
 
 (defn main []
   (om/root single-gradient state/app-state {:target (.getElementById js/document "1-twosides")})

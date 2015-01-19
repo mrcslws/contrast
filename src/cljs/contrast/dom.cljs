@@ -2,13 +2,21 @@
 
 (defn get-bounding-page-rect [el]
   (let [[left top] (loop [el el
-                     x 0
-                     y 0]
-                (if el
-                  (recur (.-offsetParent el)
-                         (+ x (.-offsetLeft el))
-                         (+ y (.-offsetTop el)))
-                  [x y]))]
+                          x 0
+                          y 0]
+                     (if el
+                       (recur (.-offsetParent el)
+                              (-> x
+                                  (+ (.-offsetLeft el))
+                                  (cond->
+                                   (not= el js/document.body)
+                                   (- (.-scrollLeft el))))
+                              (-> y
+                                  (+ (.-offsetTop el))
+                                  (cond->
+                                   (not= el js/document.body)
+                                   (- (.-scrollTop el)))))
+                       [x y]))]
     [left top (+ left (.-offsetWidth el)) (+ top (.-offsetHeight el))]))
 
 (defn within-element? [evt el]

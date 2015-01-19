@@ -150,7 +150,7 @@
                           (dom/div
                            #js {:style
                                 #js {:font "10px Helvetica, Arial, sans-serif"
-                                     :font-weight "bold"
+                                     :fontWeight "bold"
                                      :color "#ccc"
                                      :text-align "center"}}
                            (cond->> (get target (:key schema))

@@ -5,3 +5,29 @@ body {
 p, ul, ol {
     font-size: 13px;
 }
+
+.hood-open div.content {
+	position:fixed;
+	overflow:auto;
+	padding:10px;
+	left:0;
+	top:0;
+	bottom:0;
+	right:150px;
+}
+
+div.under-the-hood {
+	display:none;
+	position:fixed;
+	overflow:auto;
+	width:150px;
+	top:0;
+	bottom:0;
+	right:0;	
+	font: 11px Helvetica, Arial, sans-serif;
+	font-weight: bold;
+}
+
+.hood-open div.under-the-hood {
+	display:block;
+}
