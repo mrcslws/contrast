@@ -6,11 +6,6 @@
 (defonce app-state
   (atom {:hood-open? false
 
-         :single-linear-gradient {:width 600
-                                  :height 256
-                                  :transition-radius 250
-                                  :selected-color nil
-                                  :locked {:probed-row 30}}
          :single-sinusoidal-gradient {:width 600
                                       :height 256
                                       :transition-radius 250
@@ -20,4 +15,12 @@
                          :height 256
                          :contrast 10
                          :selected-color nil
-                         :locked {:probed-row 30}}}))
+                         :locked {:probed-row 30}}
+
+         :harmonic-grating {:width 600
+                            :height 256
+                            :contrast 128
+                            :selected-color nil
+                            :harmonics [1 3 5 7 9 11 13
+                                        15 17 19 21 23 25
+                                        27 29 31 33 35 37 39]}}))

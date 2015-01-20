@@ -6,13 +6,19 @@ p, ul, ol {
     font-size: 13px;
 }
 
-.hood-open div.content {
+div.content {
+	/* If opening the hood causes the content to go from position:static to position:fixed,
+	   it loses the scroll position. So just always use fixed. */
 	position:fixed;
 	overflow:auto;
 	padding:10px;
 	left:0;
 	top:0;
 	bottom:0;
+	right:0;
+}
+
+.hood-open div.content {
 	right:150px;
 }
 

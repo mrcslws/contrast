@@ -12,7 +12,8 @@
             [contrast.components.row-display :refer [row-display]]
             [contrast.dom :as domh]
             [contrast.components.color-exposer :refer [color-exposer]]
-            [contrast.components.eyedropper-zone :refer [eyedropper-zone]])
+            [contrast.components.eyedropper-zone :refer [eyedropper-zone]]
+            [contrast.components.numvec-editable :refer [numvec-editable]])
   (:require-macros [cljs.core.async.macros :refer [go go-loop alt!]]))
 
 (defn probed-illusion [illusion]
@@ -57,9 +58,34 @@
                       (row-probe config {:key :probed-row}
                                  {:track-border-only? true})))))))
 
+(defn just-color-probe [illusion]
+  (fn [config owner]
+    (reify
+      om/IInitState
+      (init-state [_]
+        {:illusion-updates (chan)})
+
+      om/IWillMount
+      (will-mount [_]
+        (let [{:keys [illusion-updates]} (om/get-state owner)]
+          (go-loop []
+            (om/set-state! owner :illusion-imagedata (<! illusion-updates))
+            (recur))))
+
+      om/IRenderState
+      (render-state [_ {:keys [illusion-updates illusion-imagedata]}]
+        (dom/div nil
+                 (->> (om/build illusion
+                                config
+                                {:opts {:subscriber illusion-updates}})
+                      (color-exposer config illusion-imagedata)
+                      (eyedropper-zone config {:key :selected-color}
+                                       illusion-imagedata)))))))
+
 (def probed-linear (probed-illusion illusions/single-linear-gradient))
 (def probed-sinusoidal (probed-illusion illusions/single-sinusoidal-gradient))
-(def probed-grating (probed-illusion illusions/grating))
+(def probed-grating (probed-illusion illusions/sweep-grating))
+(def probed-harmonic-grating (just-color-probe illusions/harmonic-grating))
 
 (defn single-gradient [app owner]
   (reify
@@ -97,6 +123,24 @@
                         :str-format "%.1f rgb units"
                         :interval 0.5})))))
 
+(defn harmonic-grating [app owner]
+  (reify
+    om/IRender
+    (render [_]
+      (dom/div #js {:style #js {:marginLeft 40}}
+               (om/build probed-harmonic-grating
+                         (:harmonic-grating app))
+               (slider {:width 280 :marginLeft 140}
+                       (:harmonic-grating app)
+                       {:key :contrast
+                        :min 0
+                        :max 128
+                        :str-format "%.1f rgb units"
+                        :interval 0.5})
+               (numvec-editable {:width 400
+                                 :marginLeft 100}
+                (:harmonic-grating app) {:key :harmonics})))))
+
 (defn app-state->html [s]
   (if (map? s)
     (dom/div nil
@@ -119,12 +163,12 @@
                       "}"))
     (dom/div nil (pr-str s))))
 
+;; This shouldn't be included in production unless it's updated to be
+;; "pay-per-play", i.e. not running code when the display isn't toggled.
 (defn app-state-display [app owner]
   (reify
     om/IWillMount
     (will-mount [_]
-      ;;eventkey
-      ;; (events/listen js/document.body "keypress" #(put! port %1))
       (om/set-state! owner :keypress-eventkey
                      (events/listen js/document.body
                                     "keypress"
@@ -150,4 +194,5 @@
 (defn main []
   (om/root single-gradient state/app-state {:target (.getElementById js/document "1-twosides")})
   (om/root sweep-grating state/app-state {:target (.getElementById js/document "2-sweep-grating")})
+  (om/root harmonic-grating state/app-state {:target (.getElementById js/document "3-harmonic-grating")})
   (om/root app-state-display state/app-state {:target (.getElementById js/document "app-state")}))

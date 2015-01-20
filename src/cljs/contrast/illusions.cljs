@@ -68,7 +68,7 @@
 ;; Oscillate between 0 and 255.
 ;; (127.5 + contrast * sin)
 ;; 127.5*(1 + sin)
-(defn paint-grating [{:keys [contrast]} cnv]
+(defn paint-sweep-grating [{:keys [contrast]} cnv]
   (let [ctx (.getContext cnv "2d")
         width (.-width cnv)
         height (.-height cnv)
@@ -77,8 +77,7 @@
     (cnv/clear ctx)
     (dotimes [col width]
       (let [bcolor (-> col
-                       inc
-                       (/ 70)
+                       (/ (* 22 js/Math.PI))
                        (js/Math.pow 3)
                        js/Math.sin
                        (* (- contrast 0.5))
@@ -90,7 +89,7 @@
     (.putImageData ctx imagedata 0 0)
     imagedata))
 
-(defn grating [config owner {:keys [subscriber]}]
+(defn sweep-grating [config owner {:keys [subscriber]}]
   (reify
     om/IRender
     (render [_]
@@ -98,4 +97,41 @@
                 {:opts {:subscriber subscriber
                         :width (:width config)
                         :height (:height config)
-                        :fpaint paint-grating}}))))
+                        :fpaint paint-sweep-grating}}))))
+
+(map #(js/Math.sin %))
+
+(defn paint-harmonic-grating [{:keys [contrast harmonics]} cnv]
+  (let [ctx (.getContext cnv "2d")
+        width (.-width cnv)
+        height (.-height cnv)
+        imagedata (.createImageData ctx width height)]
+    (cnv/clear ctx)
+    (dotimes [col width]
+      (let [x (-> col
+                  (/ (* 5 js/Math.PI)))
+            sum-of-sins (reduce (fn [s h]
+                                  (-> x
+                                      (* h)
+                                      js/Math.sin
+                                      (* (/ 1 h))
+                                      (+ s)))
+                                0 harmonics)
+            c (-> sum-of-sins
+                  (* (- contrast 0.5))
+                  (+ 127.5)
+                  js/Math.round)]
+        (dotimes [row height]
+          (pixel/write! imagedata col row c c c 255))))
+    (.putImageData ctx imagedata 0 0)
+    imagedata))
+
+(defn harmonic-grating [config owner {:keys [subscriber]}]
+  (reify
+    om/IRender
+    (render [_]
+      (om/build cnv/canvas config
+                {:opts {:subscriber subscriber
+                        :width (:width config)
+                        :height (:height config)
+                        :fpaint paint-harmonic-grating}}))))
