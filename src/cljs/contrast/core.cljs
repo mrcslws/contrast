@@ -47,7 +47,10 @@
                       (color-exposer config row-display-imagedata)
                       (eyedropper-zone config {:key :selected-color}
                                        row-display-imagedata)
-                      (dom/div #js {:style #js {:marginBottom 20}}))
+                      (dom/div #js {:style #js {:marginBottom 20
+                                                :display "inline-block"
+                                                :borderLeft "3px solid red"
+                                                :borderRight "3px solid red"}}))
 
                  (->> (om/build illusion
                                 config

@@ -5,11 +5,12 @@
             [contrast.components.tracking-area :refer [tracking-area]]
             [contrast.common :refer [wide-background-image]]))
 
-(def lens-overshot 10)
-(def lens-h 11)
+(def lens-overshot 5)
+(def lens-h 3)
 
 (defn on-move [{:keys [target schema]} owner]
   (fn [_ content-y]
+    (om/set-state! owner :is-tracking? true)
     (let [ch (.-offsetHeight (om/get-node owner "content"))
           y (-> content-y
                 (max 0)
@@ -24,6 +25,7 @@
 
 (defn on-exit [config owner]
   (fn [_ _]
+    (om/set-state! owner :is-tracking? false)
     (revert-to-locked! config owner)))
 
 (defn on-click [{:keys [target schema]} owner]
@@ -39,15 +41,15 @@
     om/IInitState
     (init-state [_]
       {:lens-top nil
-       :track-border-only? false})
+       :track-border-only? false
+       :is-tracking? false})
 
     om/IWillMount
     (will-mount [_]
       (revert-to-locked! config owner))
 
     om/IRenderState
-    (render-state [_ {:keys [content data-key data-width data-min data-max
-                             data-interval lens-top track-border-only?]}]
+    (render-state [_ {:keys [content lens-top track-border-only? is-tracking?]}]
       (tracking-area nil
        {:on-move (on-move config owner)
         :on-exit (on-exit config owner)
@@ -59,25 +61,43 @@
        (dom/div #js {:style #js {:position "relative"
                                  :zIndex 1
                                  :height 0}}
-                (apply dom/div #js {:style
-                                    #js {:display (if (nil? lens-top)
-                                                    "none" "block")
 
-                                         :top (- lens-top (quot lens-h 2))
-                                         :height lens-h
+                (dom/div #js {:style
+                              #js {:display (if (nil? lens-top)
+                                              "none" "block")
 
-                                         ;; Fill the positioned container
-                                         :position "absolute"
-                                         :width "100%"
+                                   :top (- lens-top (quot lens-h 2))
+                                   :height lens-h
 
-                                         ;; Lengthen and center
-                                         :paddingLeft lens-overshot
-                                         :paddingRight lens-overshot
-                                         :left (- lens-overshot)}}
-                       (wide-background-image "images/RowLensLeft.png" 6
-                                              "images/RowLensCenter.png"
-                                              "images/RowLensRight.png" 6
-                                              lens-h)))
+                                   ;; Fill the positioned container
+                                   :position "absolute"
+                                   :width "100%"
+
+                                   ;; Lengthen and center
+                                   :paddingLeft lens-overshot
+                                   :paddingRight lens-overshot
+                                   :left (- lens-overshot)}}
+
+                         (dom/div #js {:style
+                                       #js {:position "absolute"
+                                            :width lens-overshot
+                                            :height lens-h
+                                            :backgroundColor "red"
+                                            :left 0}})
+                         (when is-tracking?
+                           (dom/div #js {:style
+                                         #js {:position "absolute"
+                                              :left lens-overshot
+                                              :right lens-overshot
+                                              :top 1
+                                              :height 1
+                                              :backgroundColor "red"}}))
+                         (dom/div #js {:style
+                                       #js {:position "absolute"
+                                            :width lens-overshot
+                                            :height lens-h
+                                            :backgroundColor "red"
+                                            :right 0}})))
        (dom/div #js {:ref "content"
                      :style #js {:position "relative"
                                  :zIndex 0}} content)))))

@@ -14,7 +14,7 @@
   (apply str (interpose " " v)))
 
 (defn str->numvec [s]
-  (let [v (->> (string/split s #"[\s,]+")
+  (let [v (->> (string/split s #"[\s,;]+")
                (map js/parseInt)
                vec)]
     (when (every? number? v)
