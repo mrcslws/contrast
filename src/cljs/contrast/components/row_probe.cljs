@@ -11,12 +11,11 @@
 (defn on-move [{:keys [target schema]} owner]
   (fn [_ content-y]
     (om/set-state! owner :is-tracking? true)
-    (let [ch (.-offsetHeight (om/get-node owner "content"))
-          y (-> content-y
-                (max 0)
-                (min (dec ch)))]
-      (om/update! target (:key schema) y)
-      (om/set-state! owner :lens-top y))))
+    (let [ch (.-offsetHeight (om/get-node owner "content"))]
+      (when (and (>= content-y 0)
+                 (< content-y ch))
+       (om/update! target (:key schema) content-y)
+       (om/set-state! owner :lens-top content-y)))))
 
 (defn revert-to-locked! [{:keys [target schema]} owner]
   (let [v (get-in target [:locked (:key schema)])]
@@ -34,8 +33,6 @@
     (om/update! (:locked target) (:key schema)
                 (get target (:key schema)))))
 
-;; TODO: bug -- moving the cursor up the top of the image
-;; causes the probe to show up when content should be ignored
 (defn row-probe-component [config owner]
   (reify
     om/IInitState
@@ -55,7 +52,6 @@
         :on-exit (on-exit config owner)
         :on-click (on-click config owner)
         :underlap-x 40
-        :underlap-y 10
         :track-border-only? track-border-only?
         :determine-width-from-contents? true}
        (dom/div #js {:style #js {:position "relative"
@@ -89,9 +85,9 @@
                                          #js {:position "absolute"
                                               :left lens-overshot
                                               :right lens-overshot
-                                              :top 1
                                               :height 1
-                                              :backgroundColor "red"}}))
+                                              :borderTop "1px solid red"
+                                              :borderBottom "1px solid red"}}))
                          (dom/div #js {:style
                                        #js {:position "absolute"
                                             :width lens-overshot

@@ -102,8 +102,8 @@
         :underlap-y 0}
        (dom/div #js {:ref "slider"
                      :style #js {;; Make room for the bounce.
-                                 :margin-top 20
-                                 :margin-bottom 8
+                                 :marginTop 20
+                                 :marginBottom 8
                                  :height 4}}
                 (apply dom/div #js {:style #js {:position "absolute"
                                                 :zIndex 0
@@ -152,7 +152,7 @@
                                 #js {:font "10px Helvetica, Arial, sans-serif"
                                      :fontWeight "bold"
                                      :color "#ccc"
-                                     :text-align "center"}}
+                                     :textAlign "center"}}
                            (cond->> (get target (:key schema))
 
                                     (contains? schema :str-format)

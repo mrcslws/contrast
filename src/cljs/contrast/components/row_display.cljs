@@ -5,7 +5,7 @@
             [contrast.pixel :as pixel]))
 
 (defn paint [owner]
-  (fn [{target :target schema :schema stalkee :imagedata}  cnv]
+  (fn [{target :target schema :schema stalkee :imagedata} cnv]
     (let [ctx (.getContext cnv "2d")
           sr (get target (:key schema))]
       (cnv/clear ctx)
@@ -28,6 +28,8 @@
                            stalkee col sr)))
           (.putImageData ctx imagedata 0 0))))))
 
+;; TODO display a red border when the illusion's tracking area is tracking.
+;; This will involve channels.
 (defn row-display-component [config owner {:keys [subscriber]}]
   (reify
     om/IRender
