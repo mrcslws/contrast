@@ -2,7 +2,8 @@
   (:require [om.core :as om :include-macros true]
             [om.dom :as dom :include-macros true]
             [contrast.components.canvas :as cnv]
-            [contrast.pixel :as pixel])
+            [contrast.pixel :as pixel]
+            [contrast.common :refer [wavefn]])
   (:require-macros [contrast.macros :refer [dorange]]))
 
 ;; TODO decomplect vertical `progress->color` from horizontal
@@ -99,30 +100,43 @@
                         :height (:height config)
                         :fpaint paint-sweep-grating}}))))
 
-(map #(js/Math.sin %))
-
-(defn paint-harmonic-grating [{:keys [contrast harmonics]} cnv]
+(defn paint-harmonic-grating [{:keys [from-color to-color harmonics period
+                                      wave]} cnv]
   (let [ctx (.getContext cnv "2d")
         width (.-width cnv)
         height (.-height cnv)
-        imagedata (.createImageData ctx width height)]
+        imagedata (.createImageData ctx width height)
+        [[fr fg fb]
+         [tr tg tb]] (map (fn [color]
+                            (map (fn [[s f]]
+                                   (js/parseInt (subs color s f) 16))
+                                 [[1 3] [3 5] [5 7]]))
+                          [from-color to-color])
+        [rcenter gcenter bcenter] (map #(/ (+ % %2) 2)
+                                       [fr fg fb] [tr tg tb])
+        [cfoo gfoo bfoo] (map #(- %2 %)
+                              [rcenter gcenter bcenter]
+                              [fr fg fb])
+        ;; cursor lookups will cause delays
+        harmonics (om/value harmonics)]
     (cnv/clear ctx)
     (dotimes [col width]
-      (let [x (-> col
-                  (/ (* 5 js/Math.PI)))
-            sum-of-sins (reduce (fn [s h]
-                                  (-> x
+      (let [sum-of-sins (reduce (fn [s h]
+                                  (-> col
                                       (* h)
-                                      js/Math.sin
+                                      ((partial wavefn wave) period)
                                       (* (/ 1 h))
                                       (+ s)))
                                 0 harmonics)
-            c (-> sum-of-sins
-                  (* (- contrast 0.5))
-                  (+ 127.5)
-                  js/Math.round)]
+            [r g b] (map (fn [center foo]
+                           (-> sum-of-sins
+                               (* foo)
+                               (+ center)
+                               js/Math.round))
+                         [rcenter gcenter bcenter]
+                         [cfoo gfoo bfoo])]
         (dotimes [row height]
-          (pixel/write! imagedata col row c c c 255))))
+          (pixel/write! imagedata col row r g b 255))))
     (.putImageData ctx imagedata 0 0)
     imagedata))
 

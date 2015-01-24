@@ -6,14 +6,14 @@
             [contrast.components.tracking-area :refer [tracking-area]]))
 
 (defn paint [{:keys [imagedata selected-color]} cnv]
-  (let [ctx (.getContext cnv "2d")
-        [r g b a] selected-color]
+  (let [ctx (.getContext cnv "2d")]
     (cnv/clear ctx)
-    (when imagedata
-      (dotimes [x (.-width imagedata)]
-        (dotimes [y (.-height imagedata)]
-          (when (pixel/matches? imagedata x y r g b a)
-            (cnv/fill-rect ctx x y 1 1 "blue")))))))
+    (when (and imagedata selected-color)
+      (let [[r g b a] selected-color]
+        (dotimes [x (.-width imagedata)]
+          (dotimes [y (.-height imagedata)]
+            (when (pixel/matches? imagedata x y r g b a)
+              (cnv/fill-rect ctx x y 1 1 "blue"))))))))
 
 (defn color-exposer-component [config owner]
   (reify
