@@ -1,5 +1,6 @@
 (ns contrast.core
-  (:require [om.core :as om :include-macros true]
+  (:require [clojure.string :as string]
+            [om.core :as om :include-macros true]
             [om.dom :as dom :include-macros true]
             [goog.events :as events]
             [goog.events.KeyCodes :as gkeys]
@@ -11,11 +12,13 @@
             [contrast.components.row-probe :refer [row-probe]]
             [contrast.components.row-display :refer [row-display]]
             [contrast.dom :as domh]
+            [contrast.common :refer [hexcode->rgb average-color]]
             [contrast.components.color-exposer :refer [color-exposer]]
             [contrast.components.eyedropper-zone :refer [eyedropper-zone]]
             [contrast.components.numvec-editable :refer [numvec-editable]]
             [contrast.components.color-picker :refer [color-picker-component]]
-            [contrast.components.wave-picker :refer [wave-picker-component]])
+            [contrast.components.wave-picker :refer [wave-picker-component]]
+            [contrast.components.wave-display :refer [wave-display-component]])
   (:require-macros [cljs.core.async.macros :refer [go go-loop alt!]]))
 
 (defn probed-illusion [illusion]
@@ -128,54 +131,89 @@
                         :str-format "%.1f rgb units"
                         :interval 0.5})))))
 
-(defn dynamic [& els]
-  (apply dom/span nil ;; #js {:style #js {:fontWeight "bold"}}
+(defn section [& els]
+  (apply dom/div #js {:style #js {:marginBottom 12}}
+         els))
+
+(defn line [& els]
+  (apply dom/div #js {:style #js {:position "relative"
+                                  :paddingTop 2}}
          els))
 
 (defn harmonic-grating [app owner]
   (reify
     om/IRender
     (render [_]
-      (dom/div #js {:style #js {:marginLeft 40}}
-               (om/build probed-harmonic-grating
-                         (:harmonic-grating app))
-               (dom/div #js {:style #js {:font "12px/1.4 Helvetica, Arial, sans-serif"}}
-                      "The first harmonic should swing between "
-                      (om/build color-picker-component {:target (:harmonic-grating app)
-                                                        :schema {:key :from-color}})
+      (let [center-color (str "rgb("
+                              (->> [(get-in app [:harmonic-grating :from-color])
+                                    (get-in app [:harmonic-grating :to-color])]
+                                   (map hexcode->rgb)
+                                   (apply average-color)
+                                   (map js/Math.round)
+                                   (string/join "," ))
+                              ")")]
+        (dom/div nil
+                 (dom/div #js {:style #js {:display "inline-block"
+                                           :verticalAlign "top"}}
+                          (om/build probed-harmonic-grating
+                                    (:harmonic-grating app)))
+                 (dom/div #js {:style #js {:display "inline-block"
+                                           :marginLeft 24}}
+                          (dom/div #js {:style #js {:backgroundColor "#f2f2f2"
+                                                    :background "linear-gradient(#FFFFFF 0%, #f2f2f2 100%)"
+                                                    :border "1px solid #e2e2e2"
+                                                    :paddingTop 8
+                                                    :paddingBottom 8
+                                                    :paddingLeft 14
+                                                    :borderRadius 5
+                                                    :font "12px/1.4 Helvetica, Arial, sans-serif"}}
+                                   (section (dom/strong nil "Start with the midpoint of ")
+                                            (om/build color-picker-component {:target (:harmonic-grating app)
+                                                                              :schema {:key :from-color}})
 
-                      " and "
-                      (om/build color-picker-component {:target (:harmonic-grating app)
-                                                        :schema {:key :to-color}})
-                      (dom/br nil)
-                      "every "
-                      (dynamic (str (get-in app [:harmonic-grating :period]) " pixels"))
-                      (slider {:width 280}
-                       (:harmonic-grating app)
-                       {:key :period
-                        :min 0
-                        :max 1000
-                        :str-format "%dpx"
-                        :interval 1})
-                      (dom/br nil)
-                      "using a "
-                      (name (get-in app [:harmonic-grating :wave]))
-                      " wave."
-                      (om/build wave-picker-component {:target (:harmonic-grating app)
-                                                       :schema {:key :wave}
-                                                       :period (get-in app [:harmonic-grating :period])})
-                      (dom/br nil)
-                      "Include these harmonics: "
-                      (numvec-editable {:width 400}
-                                       (:harmonic-grating app) {:key :harmonics})
-                      ;; (dom/br nil)
-                      ;; "giving each harmonic n a magnitude of "
-                      ;; :todo
-                      )
-               (dom/div nil
-                        (when-let [[r g b a]
-                                   (get-in app [:harmonic-grating :selected-color])]
-                          (str "Hovered color: rgba(" r "," g "," b "," a ")")))))))
+                                            " and "
+                                            (om/build color-picker-component {:target (:harmonic-grating app)
+                                                                              :schema {:key :to-color}})
+                                            ".")
+                                   (section (dom/strong nil "For each n ∈ ")
+                                            (numvec-editable {:width 300 :display "inline"}
+                                                             (:harmonic-grating app) {:key :harmonics})
+                                            (dom/div #js {:style #js {:paddingTop 6
+                                                                      :marginLeft 20}}
+                                                     (line "Create a " (name (get-in app [:harmonic-grating :wave])) " wave "
+                                                           (om/build wave-picker-component {:target (:harmonic-grating app)
+                                                                                            :schema {:key :wave}
+                                                                                            :period (get-in app [:harmonic-grating :period])}))
+                                                     (line "with amplitude "
+                                                           (dom/input #js {:type "text" :value "1 / n"
+                                                                           :style #js {:width 30
+                                                                                       :textAlign "center"}}))
+                                                     (line " and period "
+                                                           (dom/input #js {:type "text" :value "1 / n"
+                                                                           :style #js {:width 30
+                                                                                       :textAlign "center"}})
+                                                           " * " (get-in app [:harmonic-grating :period]) " pixels."
+                                                           (slider {:position "absolute"
+                                                                    :right 16
+                                                                    :top 6
+                                                                    :width 180
+                                                                    :display "inline-block"}
+                                                                   (:harmonic-grating app)
+                                                                   {:key :period
+                                                                    :min 1
+                                                                    :max 1000
+                                                                    :str-format "%dpx"
+                                                                    :interval 1}))))
+
+                                   (section (dom/strong nil "Use the sum of these waves to shift the color.")))
+                          (dom/div #js {:style #js {:marginTop 12
+                                                    :paddingLeft 14}}
+                                   (when-let [[r g b a]
+                                              (get-in app [:harmonic-grating :selected-color])]
+                                     (str "Hovered color: rgba(" r "," g "," b "," a ")"))))
+                 (dom/div #js {:style #js {:marginTop 12}}
+                          (om/build wave-display-component (:harmonic-grating app)))
+                 )))))
 
 (defn app-state->html [s]
   (if (map? s)

@@ -6,9 +6,6 @@
             [contrast.components.tracking-area :refer [tracking-area]]
             [contrast.common :refer [wavefn wavey->ycoord]]))
 
-(defn y->ycoord [v height]
-  (- height v))
-
 (defn paint [wave shift vlinefreq]
   (fn [_ cnv]
     (let [ctx (.getContext cnv "2d")
@@ -18,10 +15,11 @@
           period (/ width 2)
           amplitude (/ (dec height) 2)
           cshift (* shift period)]
+      (cnv/clear ctx)
       (dotimes [col width]
         (pixel/write! imagedata col (wavey->ycoord (wavefn wave (+ cshift col)
                                                            period)
-                                                   height)
+                                                   amplitude height)
                       0 0 0 255))
       (when (pos? vlinefreq)
         (loop [i 0]
@@ -46,19 +44,19 @@
                     (dom/div #js {:style #js {:display "inline-block"
                                               :padding 1
                                               :border (cond
-                                                       (= (get target
-                                                               (:key schema))
+                                                       (= (om/get-state owner
+                                                                        :locked)
                                                           k)
                                                        "1px solid red"
 
-                                                       (= (om/get-state owner
-                                                                        :locked)
+                                                       (= (get target
+                                                               (:key schema))
                                                           k)
                                                        "1px dashed red"
 
                                                        :default
                                                        "1px dashed black")
-                                              :marginRight 30}
+                                              :marginRight 16}
                                   :onMouseMove #(om/update! target (:key schema) k)
                                   :onClick #(om/set-state! owner :locked k)
                                   :onMouseOut #(om/update! target (:key schema)

@@ -15,6 +15,7 @@
 
 (defn str->numvec [s]
   (let [v (->> (string/split s #"[\s,;]+")
+               (remove empty?)
                (map js/parseInt)
                vec)]
     (when (every? number? v)

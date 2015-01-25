@@ -32,6 +32,19 @@
            :backgroundImage (css-url right)
            :width rightw]])))
 
+(defn hexcode->rgb [s]
+  ;; "#FFFFFF" => [255 255 255]
+  (map (fn [[start end]]
+         (js/parseInt (subs s start end) 16))
+       [[1 3] [3 5] [5 7]]))
+
+;; Need to round to the nearest integer before displaying.
+(defn average-color [& vals]
+  (apply map
+         (fn [& cs]
+           (/ (reduce + 0 cs) (count cs)))
+         vals))
+
 (defmulti wavefn
   (fn [wave col period]
     wave))
@@ -69,11 +82,12 @@
     1
     -1))
 
-(defn wavey->ycoord [wavey height]
-  ;; For example, if the height is 10, then the range should be
+;; TODO everything about "amplitude" just feels weird.
+(defn wavey->ycoord [wavey amplitude height]
+  ;; For example, if the height is 10, then a range might be
   ;; between 0 and 9, centered on 4.5.
   (let [c (-> height dec (/ 2))]
     (js/Math.round (-> wavey
                        - ;; Convert to HTML y.
-                       (* c)
+                       (* amplitude)
                        (+ c)))))

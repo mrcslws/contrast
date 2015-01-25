@@ -98,12 +98,12 @@
        {:on-move (on-move target schema owner)
         :on-exit (on-exit target schema owner)
         :on-click (on-click target schema owner)
-        :underlap-x 40
-        :underlap-y 0}
+        :underlap-x 10
+        :underlap-y 20}
        (dom/div #js {:ref "slider"
                      :style #js {;; Make room for the bounce.
-                                 :marginTop 20
-                                 :marginBottom 8
+                                 :marginTop 4
+                                 :marginBottom 4
                                  :height 4}}
                 (apply dom/div #js {:style #js {:position "absolute"
                                                 :zIndex 0

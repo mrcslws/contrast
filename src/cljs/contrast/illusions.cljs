@@ -3,7 +3,7 @@
             [om.dom :as dom :include-macros true]
             [contrast.components.canvas :as cnv]
             [contrast.pixel :as pixel]
-            [contrast.common :refer [wavefn]])
+            [contrast.common :refer [wavefn hexcode->rgb average-color]])
   (:require-macros [contrast.macros :refer [dorange]]))
 
 ;; TODO decomplect vertical `progress->color` from horizontal
@@ -107,13 +107,8 @@
         height (.-height cnv)
         imagedata (.createImageData ctx width height)
         [[fr fg fb]
-         [tr tg tb]] (map (fn [color]
-                            (map (fn [[s f]]
-                                   (js/parseInt (subs color s f) 16))
-                                 [[1 3] [3 5] [5 7]]))
-                          [from-color to-color])
-        [rcenter gcenter bcenter] (map #(/ (+ % %2) 2)
-                                       [fr fg fb] [tr tg tb])
+         [tr tg tb]] (map hexcode->rgb [from-color to-color])
+        [rcenter gcenter bcenter] (average-color [fr fg fb] [tr tg tb])
         [cfoo gfoo bfoo] (map #(- %2 %)
                               [rcenter gcenter bcenter]
                               [fr fg fb])
