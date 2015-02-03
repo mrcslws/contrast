@@ -19,6 +19,10 @@
 
 (defn eyedropper-zone-component [config owner {:keys [updates]}]
   (reify
+    om/IDisplayName
+    (display-name [_]
+      "eyedropper-zone")
+
     om/IRenderState
     (render-state [_ {:keys [content]}]
       (apply tracking-area nil

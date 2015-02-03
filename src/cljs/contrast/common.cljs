@@ -38,12 +38,8 @@
          (js/parseInt (subs s start end) 16))
        [[1 3] [3 5] [5 7]]))
 
-;; Need to round to the nearest integer before displaying.
-(defn average-color [& vals]
-  (apply map
-         (fn [& cs]
-           (/ (reduce + 0 cs) (count cs)))
-         vals))
+(defn rgb->hexcode [rgb]
+  (apply str "#" (map #(.toString % 16) rgb)))
 
 (defmulti wavefn
   (fn [wave col period]
@@ -91,3 +87,24 @@
                        - ;; Convert to HTML y.
                        (* amplitude)
                        (+ c)))))
+
+(defn spectrum-dictionary [spectrum]
+  (let [{:keys [knob1-color knob1-value knob2-color knob2-value]} spectrum
+        dvalue (- knob2-value knob1-value)
+        [rs gs bs :as slopes] (map #(/ (- %2 %) dvalue)
+                                   knob1-color knob2-color)
+        [rz gz bz] (map (fn [c s]
+                          (- c (* s knob2-value)))
+                        knob2-color
+                        slopes)]
+    (fn [x]
+      ;; TODO - consider js array for perf
+      [(-> x (* rs) (+ rz) js/Math.round)
+       (-> x (* gs) (+ gz) js/Math.round)
+       (-> x (* bs) (+ bz) js/Math.round)])))
+
+(defn progress [start end p]
+  (-> p
+      (* (- end start))
+      (+ start)
+      js/Math.round))

@@ -71,6 +71,9 @@
 
 (defn tracking-area-component [_ owner]
   (reify
+    om/IDisplayName
+    (display-name [_]
+      "tracking-area")
 
     om/IRenderState
     (render-state [_ {:keys [content underlap-x underlap-y on-click

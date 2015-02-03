@@ -10,19 +10,29 @@
                                       :height 256
                                       :transition-radius 250
                                       :selected-color nil
-                                      :locked {:probed-row 30}}
+                                      :locked {:probed-row 30}
+                                      :spectrum {:knob1-color [136 136 136]
+                                                 :knob1-value -1
+                                                 :knob2-color [170 170 170]
+                                                 :knob2-value 1}}
          :sweep-grating {:width 600
                          :height 256
                          :contrast 10
                          :selected-color nil
-                         :locked {:probed-row 30}}
+                         :locked {:probed-row 30}
+                         :spectrum {:knob1-color [136 136 136]
+                                    :knob1-value -1
+                                    :knob2-color [170 170 170]
+                                    :knob2-value 1}}
 
          :harmonic-grating {:width 600
                             :height 256
                             :period 100
                             :selected-color nil
-                            :from-color "#888888"
-                            :to-color "#AAAAAA"
+                            :spectrum {:knob1-color [136 136 136]
+                                       :knob1-value -1
+                                       :knob2-color [170 170 170]
+                                       :knob2-value 1}
                             :wave :sine
                             :harmonic-magnitude "1 / n"
                             :harmonics [1 3 5 7 9 11 13

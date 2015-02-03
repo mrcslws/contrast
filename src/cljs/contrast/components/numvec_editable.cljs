@@ -29,6 +29,10 @@
 
 (defn numvec-editable-component [{:keys [target schema width]} owner]
   (reify
+    om/IDisplayName
+    (display-name [_]
+      "numvec-editable")
+
     om/IInitState
     (init-state [_]
       {:text (numvec->str (get target (:key schema)))})

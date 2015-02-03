@@ -82,6 +82,10 @@
 ;; - :pre verification of state
 (defn slider-component [{:keys [target schema]} owner]
   (reify
+    om/IDisplayName
+    (display-name [_]
+      "slider")
+
     om/IInitState
     (init-state [_]
       {:knob-offset 0

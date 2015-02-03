@@ -5,18 +5,24 @@
             [contrast.pixel :as pixel]
             [contrast.components.tracking-area :refer [tracking-area]]))
 
-(defn paint [{:keys [imagedata selected-color]} cnv]
-  (let [ctx (.getContext cnv "2d")]
-    (cnv/clear ctx)
-    (when (and imagedata selected-color)
-      (let [[r g b a] selected-color]
-        (dotimes [x (.-width imagedata)]
-          (dotimes [y (.-height imagedata)]
-            (when (pixel/matches? imagedata x y r g b a)
-              (cnv/fill-rect ctx x y 1 1 "blue"))))))))
+(defn painter [data]
+  (fn [cnv]
+    (let [{:keys [imagedata selected-color]} data
+          ctx (.getContext cnv "2d")]
+      (cnv/clear ctx)
+      (when (and imagedata selected-color)
+        (let [[r g b a] selected-color]
+          (dotimes [x (.-width imagedata)]
+            (dotimes [y (.-height imagedata)]
+              (when (pixel/matches? imagedata x y r g b a)
+                (cnv/fill-rect ctx x y 1 1 "blue")))))))))
 
 (defn color-exposer-component [config owner]
   (reify
+
+    om/IDisplayName
+    (display-name [_]
+      "color-exposer")
 
     om/IRenderState
     (render-state [_ {:keys [content]}]
@@ -31,9 +37,7 @@
                                            :width "100%"
                                            :height "100%"
                                            :zIndex 1}}
-                          (om/build cnv/canvas config {:opts {:fpaint paint
-                                                              :width w
-                                                              :height h}}))
+                          (cnv/canvas config w h (painter config)))
                  (apply dom/div #js {:style #js {:position "relative"
                                                  :zIndex 0}}
                         content))))))

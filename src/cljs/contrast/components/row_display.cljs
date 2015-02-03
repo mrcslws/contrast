@@ -4,9 +4,10 @@
             [contrast.components.canvas :as cnv]
             [contrast.pixel :as pixel]))
 
-(defn paint [owner]
-  (fn [{target :target schema :schema stalkee :imagedata} cnv]
-    (let [ctx (.getContext cnv "2d")
+(defn painter [data owner]
+  (fn [cnv]
+    (let [{target :target schema :schema stalkee :imagedata} data
+          ctx (.getContext cnv "2d")
           sr (get target (:key schema))]
       (cnv/clear ctx)
       (when (and sr stalkee)
@@ -32,16 +33,20 @@
 ;; This will involve channels.
 (defn row-display-component [config owner {:keys [subscriber]}]
   (reify
+    om/IDisplayName
+    (display-name [_]
+      "row-display")
+
     om/IRender
     (render [_]
       (dom/div {:onMouseMove #(om/set-state! owner :force-update 1)}
-               (om/build cnv/canvas config
-                         {:opts {:width 600 :height 50
-                                 :fpaint (paint owner)
-                                 :subscriber subscriber}})))))
+               (cnv/canvas config 600 40 (painter config owner) subscriber)))))
 
-(defn row-display [target schema imagedata {:keys [subscriber]}]
-  (om/build row-display-component
-            {:target target :schema schema
-             :imagedata imagedata}
-            {:opts {:subscriber subscriber}}))
+(defn row-display
+  ([target schema imagedata]
+     (row-display target schema imagedata nil))
+  ([target schema imagedata subscriber]
+     (om/build row-display-component
+               {:target target :schema schema
+                :imagedata imagedata}
+               {:opts {:subscriber subscriber}})))

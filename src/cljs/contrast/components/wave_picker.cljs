@@ -6,8 +6,8 @@
             [contrast.components.tracking-area :refer [tracking-area]]
             [contrast.common :refer [wavefn wavey->ycoord]]))
 
-(defn paint [wave shift vlinefreq]
-  (fn [_ cnv]
+(defn painter [wave shift vlinefreq]
+  (fn [cnv]
     (let [ctx (.getContext cnv "2d")
           width (.-width cnv)
           height (.-height cnv)
@@ -33,6 +33,10 @@
 
 (defn wave-picker-component [{:keys [target schema] :as data} owner]
   (reify
+    om/IDisplayName
+    (display-name [_]
+      "wave-picker")
+
     om/IInitState
     (init-state [_]
       {:locked (get target (:key schema))})
@@ -61,10 +65,7 @@
                                   :onClick #(om/set-state! owner :locked k)
                                   :onMouseOut #(om/update! target (:key schema)
                                                            (om/get-state owner :locked))}
-                             (om/build cnv/canvas data
-                                       {:opts {:width 75
-                                               :height 20
-                                               :fpaint (paint k shift vlinefreq)}})))
+                             (cnv/canvas data 75 20 (painter k shift vlinefreq))))
                   [[:sine 0 0]
                    [:sawtooth 0.5 1]
                    [:triangle -0.25 0]

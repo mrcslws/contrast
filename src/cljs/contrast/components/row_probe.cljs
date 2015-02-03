@@ -8,6 +8,8 @@
 (def lens-overshot 5)
 (def lens-h 3)
 
+;; TODO - bug: when the row probe is not tracking, you can still hover
+;; over it, blocking you from hovering over the content.
 (defn on-move [{:keys [target schema]} owner]
   (fn [_ content-y]
     (om/set-state! owner :is-tracking? true)
@@ -35,6 +37,10 @@
 
 (defn row-probe-component [config owner]
   (reify
+    om/IDisplayName
+    (display-name [_]
+      "row-probe")
+
     om/IInitState
     (init-state [_]
       {:lens-top nil
