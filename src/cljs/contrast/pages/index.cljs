@@ -1,9 +1,9 @@
-(ns contrast.core
+(ns contrast.pages.index
   (:require [om.core :as om :include-macros true]
             [om.dom :as dom :include-macros true]
             [goog.events :as events]
             [goog.events.KeyCodes :as gkeys]
-            [contrast.app-state :as state]
+            [contrast.page-triggers :as page-triggers]
             [contrast.components.canvas :as cnv]
             [contrast.components.slider :refer [slider]]
             [contrast.illusions :as illusions]
@@ -12,7 +12,47 @@
             [contrast.components.wave-picker :refer [wave-picker-component]]
             [contrast.components.wave-display :refer [wave-display-component]]
             [contrast.components.chan-handlers :refer [chan-genrender]]
-            [contrast.canvas-inspectors :as inspectors :refer [inspected]]))
+            [contrast.canvas-inspectors :as inspectors :refer [inspected]]
+            [cljs.core.async :refer [put! chan mult tap close! <!]])
+  (:require-macros [cljs.core.async.macros :refer [go-loop]]))
+
+;; TODO switch away from "radius". "width" or "diameter" are better.
+
+(defonce app-state
+  (atom {:hood-open? false
+
+         :single-sinusoidal-gradient {:width 600
+                                      :height 256
+                                      :transition-radius 250
+                                      :selected-color nil
+                                      :locked {:probed-row 30}
+                                      :spectrum {:knob1-color [136 136 136]
+                                                 :knob1-value -1
+                                                 :knob2-color [170 170 170]
+                                                 :knob2-value 1}}
+         :sweep-grating {:width 600
+                         :height 256
+                         :contrast 10
+                         :selected-color nil
+                         :locked {:probed-row 30}
+                         :spectrum {:knob1-color [136 136 136]
+                                    :knob1-value -1
+                                    :knob2-color [170 170 170]
+                                    :knob2-value 1}}
+
+         :harmonic-grating {:width 600
+                            :height 256
+                            :period 100
+                            :selected-color nil
+                            :spectrum {:knob1-color [136 136 136]
+                                       :knob1-value -1
+                                       :knob2-color [170 170 170]
+                                       :knob2-value 1}
+                            :wave :sine
+                            :harmonic-magnitude "1 / n"
+                            :harmonics [1 3 5 7 9 11 13
+                                        15 17 19 21 23 25
+                                        27 29 31 33 35 37 39]}}))
 
 (defn single-gradient [app owner]
   (reify
@@ -208,8 +248,17 @@
     (render [_]
       (app-state->html app))))
 
-(defn main []
-  (om/root single-gradient state/app-state {:target (.getElementById js/document "1-twosides")})
-  (om/root sweep-grating state/app-state {:target (.getElementById js/document "2-sweep-grating")})
-  (om/root harmonic-grating state/app-state {:target (.getElementById js/document "3-harmonic-grating")})
-  (om/root app-state-display state/app-state {:target (.getElementById js/document "app-state")}))
+(defn render []
+  (om/root single-gradient app-state {:target (.getElementById js/document "1-twosides")})
+  (om/root sweep-grating app-state {:target (.getElementById js/document "2-sweep-grating")})
+  (om/root harmonic-grating app-state {:target (.getElementById js/document "3-harmonic-grating")})
+  (om/root app-state-display app-state {:target (.getElementById js/document "app-state")}))
+
+(defonce render-listen
+  (let [renders (chan)]
+    (tap page-triggers/renders renders)
+    (go-loop []
+      (<! renders)
+      (render)
+      (recur))
+    :listening))

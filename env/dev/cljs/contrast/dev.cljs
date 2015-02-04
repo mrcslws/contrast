@@ -1,5 +1,5 @@
 (ns contrast.dev
-  (:require [contrast.core :as core]
+  (:require [contrast.page-triggers :as page-triggers]
             [figwheel.client :as figwheel :include-macros true]
             [cljs.core.async :refer [put!]]
             [weasel.repl :as weasel]))
@@ -8,9 +8,8 @@
 
 (figwheel/watch-and-reload
   :websocket-url "ws://localhost:3449/figwheel-ws"
-  :jsload-callback (fn []
-                     (core/main)))
+  :jsload-callback page-triggers/render)
 
 (weasel/connect "ws://localhost:9001" :verbose true :print #{:repl :console})
 
-(core/main)
+(page-triggers/render)
