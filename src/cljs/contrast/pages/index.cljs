@@ -177,12 +177,15 @@
                                                                     :interval 1}))))
 
                                    (section (line (dom/strong nil "Use the sum of these waves to choose the color:"))
-                                            (line (spectrum-picker (:spectrum data) 300))))
-                          (dom/div #js {:style #js {:marginTop 12
-                                                    :paddingLeft 14}}
-                                   (when-let [[r g b a]
-                                              (:selected-color data)]
-                                     (str "Hovered color: rgba(" r "," g "," b "," a ")"))))
+                                            (line (spectrum-picker data 300
+                                                                   (inspectors/comp (inspectors/eyedropper-zone data)
+                                                                                    (inspectors/color-exposer data))))))
+                          ;; (dom/div #js {:style #js {:marginTop 12
+                          ;;                           :paddingLeft 14}}
+                          ;;          (when-let [[r g b a]
+                          ;;                     (:selected-color data)]
+                          ;;            (str "Hovered color: rgba(" r "," g "," b "," a ")")))
+                          )
                  (dom/div #js {:style #js {:marginTop 12}}
                           (om/build wave-display-component (select-keys data [:width :wave :harmonics :period]))))))))
 

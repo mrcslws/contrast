@@ -75,16 +75,21 @@
     (accelerating-sine-wave config))))
 
 (defn sums-of-harmonics [{:keys [harmonics period wave]}]
-  (let [;; cursor lookups will cause delays
-        harmonics (om/value harmonics)]
+  (let [harray (clj->js harmonics)
+        c (count harmonics)
+        wfn (partial (get-method wavefn wave) wave)]
     (fn [x]
-      (reduce (fn [s h]
-                (-> x
-                    (* h)
-                    ((partial wavefn wave) period)
-                    (* (/ 1 h))
-                    (+ s)))
-              0 harmonics))))
+      (loop [s 0
+             i 0]
+        (if-not (< i c)
+          s
+          (let [h (aget harray i)]
+              (recur (-> x
+                      (* h)
+                      (wfn period)
+                      (* (/ 1 h))
+                      (+ s))
+                  (inc i))))))))
 
 (defn harmonic-grating-painter [config]
   (cnv/solid-vertical-stripe-painter (comp

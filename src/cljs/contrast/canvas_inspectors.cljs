@@ -10,7 +10,8 @@
 
 (defn inspected [awaiting-chan canary inspector]
   (chan-genrender (fn [channel imgdata]
-                    (inspector (awaiting-chan channel) imgdata))
+                    (cond-> (awaiting-chan channel)
+                            inspector (inspector imgdata)))
                   canary))
 
 (defn compable [f]

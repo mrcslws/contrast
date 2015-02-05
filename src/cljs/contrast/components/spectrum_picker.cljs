@@ -5,6 +5,7 @@
             [goog.events :as events]
             [contrast.common :refer [progress spectrum-dictionary rgb->hexcode]]
             [contrast.components.canvas :as cnv]
+            [contrast.canvas-inspectors :refer [inspected]]
             [contrast.components.color-picker :refer [color-picker-component]]
             [contrast.pixel :as pixel]
             [contrast.components.tracking-area :refer [tracking-area]])
@@ -76,6 +77,8 @@
         (go-loop []
           (when-let [_ (<! started)]
             (om/set-state! owner :locked-position (:position @knob))
+            (when-let [listener (om/get-state owner :listener)]
+              (put! listener :started))
             (recur)))
 
         (go-loop []
@@ -90,6 +93,8 @@
         (go-loop []
           (when-let [_ (<! finished)]
             (om/set-state! owner :locked-position nil)
+            (when-let [listener (om/get-state owner :listener)]
+              (put! listener :finished))
             (recur))))
 
       (go-loop []
@@ -104,7 +109,8 @@
                                      (.persist e)
                                      (.preventDefault e)
                                      (put! mousedown e)
-                                     ;; React is being silly and checking for booleans.
+                                     ;; React is being silly and checking
+                                     ;; for booleans.
                                      nil)
                       :onClick (fn [e]
                                  (when-not focused
@@ -152,8 +158,7 @@
                                     :borderRadius 3
                                     :backgroundColor (rgb->hexcode (:color knob))
                                     :border (if focused 0 "2px solid black")
-                                    :top 8
-                                    }}
+                                    :top 8}}
                           (dom/div #js {:style #js {:textAlign "center"
                                                     :visibility
                                                     (when-not focused "hidden")}}
@@ -165,74 +170,108 @@
 
 (def canvash 30)
 
-(defn spectrum-picker-component [spectrum owner]
+(defn spectrum-picker-component [data owner {:keys [inspector]}]
   (reify
     om/IDisplayName
     (display-name [_]
       "spectrum-picker")
 
+    om/IInitState
+    (init-state [_]
+      {:knob-actions (chan)
+       :dragging false})
+
+    om/IWillMount
+    (will-mount [_]
+      (go-loop []
+        (when-let [action (<! (om/get-state owner :knob-actions))]
+          (case action
+            :started (om/set-state! owner :dragging true)
+            :finished (om/set-state! owner :dragging false))
+          (recur))))
+
     om/IRenderState
-    (render-state [_ {:keys [width]}]
+    (render-state [_ {:keys [width knob-actions dragging]}]
 
-      (dom/div #js {:style #js {:position "relative"
-                                :height (+ canvash 20)}}
-               (dom/div #js {:style #js {:position "absolute"
-                                         :top 0
-                                         :width width
-                                         :height 20
-                                         :font "10px Helvetica, Arial, sans-serif"
-                                         :color "#696969"}}
-                        (dom/div #js {:style #js {:position "absolute"
-                                                  :top 2
-                                                  :left -3}}
-                                 "-1")
-                        (dom/div #js {:style #js {:position "absolute"
-                                                  :left 0
-                                                  :bottom 0
-                                                  :width 1
-                                                  :height 7
-                                                  :backgroundColor "black"}})
-                        (dom/div #js {:style #js {:position "absolute"
-                                                  :top 2
-                                                  :left (- (js/Math.round (/ width 2)) 2)}}
-                                 "0")
-                        (dom/div #js {:style #js {:position "absolute"
-                                                  :left (js/Math.round (/ width 2))
-                                                  :bottom 0
-                                                  :width 1
-                                                  :height 7
-                                                  :backgroundColor "black"}})
-                        (dom/div #js {:style #js {:position "absolute"
-                                                  :top 2
-                                                  :right -2}}
-                                 "1")
-                        (dom/div #js {:style #js {:position "absolute"
-                                                  :right 0
-                                                  :bottom 0
-                                                  :width 1
-                                                  :height 7
-                                                  :backgroundColor "black"}}))
-               (dom/div #js {:style #js {:position "absolute"
-                                         :top 20}}
-                        (dom/div #js {:style
-                                      #js {:position "absolute"
-                                           :top canvash}}
-                                 (om/build color-knob-component (:left spectrum)
-                                           {:state {:target-width width}}))
-                        (dom/div #js {:style
-                                      #js {:position "absolute"
-                                           :top canvash}}
-                                 (om/build color-knob-component (:right spectrum)
-                                           {:state {:target-width width}}))
-                        (cnv/canvas spectrum width canvash
-                                    (cnv/solid-vertical-stripe-painter
-                                     (comp
-                                      ;; [-1 1] -> color
-                                      (spectrum-dictionary spectrum)
+      (let [spectrum (:spectrum data)]
+       (dom/div #js {:style #js {:position "relative"
+                                 :height (+ canvash 20)}}
+                (dom/div #js {:style #js {:position "absolute"
+                                          :top 0
+                                          :width width
+                                          :height 20
+                                          :font "10px Helvetica, Arial, sans-serif"
+                                          :color "#696969"}}
+                         (dom/div #js {:style #js {:position "absolute"
+                                                   :top 2
+                                                   :left -3}}
+                                  "-1")
+                         (dom/div #js {:style #js {:position "absolute"
+                                                   :left 0
+                                                   :bottom 0
+                                                   :width 1
+                                                   :height 7
+                                                   :backgroundColor "black"}})
+                         (dom/div #js {:style #js {:position "absolute"
+                                                   :top 2
+                                                   :left (- (js/Math.round (/ width 2)) 2)}}
+                                  "0")
+                         (dom/div #js {:style #js {:position "absolute"
+                                                   :left (js/Math.round (/ width 2))
+                                                   :bottom 0
+                                                   :width 1
+                                                   :height 7
+                                                   :backgroundColor "black"}})
+                         (dom/div #js {:style #js {:position "absolute"
+                                                   :top 2
+                                                   :right -2}}
+                                  "1")
+                         (dom/div #js {:style #js {:position "absolute"
+                                                   :right 0
+                                                   :bottom 0
+                                                   :width 1
+                                                   :height 7
+                                                   :backgroundColor "black"}}))
+                (dom/div #js {:style #js {:position "absolute"
+                                          :top 20}}
+                         (dom/div #js {:style
+                                       #js {:position "absolute"
+                                            :top canvash}}
+                                  (om/build color-knob-component (:left spectrum)
+                                            {:init-state {:listener knob-actions}
+                                             :state {:target-width width}}))
+                         (dom/div #js {:style
+                                       #js {:position "absolute"
+                                            :top canvash}}
+                                  (om/build color-knob-component (:right spectrum)
+                                            {:init-state {:listener knob-actions}
+                                             :state {:target-width width}}))
+                         (inspected (partial cnv/canvas spectrum width canvash
+                                             (cnv/solid-vertical-stripe-painter
+                                              (comp
+                                               ;; [-1 1] -> color
+                                               (spectrum-dictionary spectrum)
 
-                                      ;; col -> [-1 1]
-                                      #(dec (* 2 (/ % width)))))))))))
+                                               ;; col -> [-1 1]
+                                               #(dec (* 2 (/ % width))))))
 
-(defn spectrum-picker [spectrum width]
-  (om/build spectrum-picker-component spectrum
-            {:init-state {:width width}}))
+                                    ;; TODO - is it possible to cleverly use ref-cursors
+                                    ;; to get away from this canary approach? The only
+                                    ;; reason this takes the entire `data` is because
+                                    ;; it needs to invalidate the `selected-color`.
+                                    data
+
+                                    ;; TODO - it's annoying when you're dragging
+                                    ;; and you hover over the image.
+                                    ;; It's possible to only use the inspector
+                                    ;; when not dragging, but that causes
+                                    ;; unmounting / mounting.
+                                    inspector)))))))
+
+(defn spectrum-picker
+  ([spectrum width]
+     (spectrum-picker spectrum width nil))
+  ([spectrum width inspector]
+     (om/build spectrum-picker-component spectrum
+               {:init-state {:width width}
+                :opts {:inspector inspector}})))

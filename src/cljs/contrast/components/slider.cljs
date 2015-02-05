@@ -103,7 +103,7 @@
         :on-exit (on-exit target schema owner)
         :on-click (on-click target schema owner)
         :underlap-x 10
-        :underlap-y 20}
+        :underlap-y 5}
        (dom/div #js {:ref "slider"
                      :style #js {;; Make room for the bounce.
                                  :marginTop 4
