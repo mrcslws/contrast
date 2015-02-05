@@ -17,7 +17,7 @@
         eventkey (events/listen el type #(put! port %1))]
     [eventkey port]))
 
-(defn watch [mousedown start progress finished]
+(defn watch [mousedown start progress finished coalesce-timeout]
   (go-loop []
     (when-let [downevt (<! mousedown)]
       (when (= (.-button downevt) 0)
@@ -45,12 +45,11 @@
         (drain! mousedown))
       (recur))))
 
-(defn knobpos->left [v w knobw]
+(defn knobpos->left [v w]
   (-> v
       inc
       (/ 2)
       (* w)
-      (- (/ knobw 2))
       js/Math.round))
 
 (defn color-knob-component [knob owner]
@@ -72,7 +71,7 @@
             started (chan)
             progress (chan)
             finished (chan)]
-        (watch mousedown started progress finished)
+        (watch mousedown started progress finished nil)
 
         (go-loop []
           (when-let [_ (<! started)]
@@ -105,68 +104,73 @@
     om/IRenderState
     (render-state [_ {:keys [target-width mousedown focused invokes blurs]}]
       (let [knobw (if focused 46 12)]
-        (dom/div #js {:onMouseDown (fn [e]
-                                     (.persist e)
-                                     (.preventDefault e)
-                                     (put! mousedown e)
-                                     ;; React is being silly and checking
-                                     ;; for booleans.
-                                     nil)
-                      :onClick (fn [e]
-                                 (when-not focused
-                                   (om/set-state! owner :focused true)
-                                   (put! invokes :invoked)))
-                      :style #js {:position "absolute"
-                                  :width knobw
-                                  :height 18
-
-                                  :transitionProperty "all"
-                                  :transitionDuration "0.2s"
-
-                                  :left (knobpos->left (:position knob) target-width
-                                                       knobw)
-                                  :cursor "pointer"}}
-                 (dom/div #js {:style #js {:position "absolute"
-                                           :height 0
-                                           :width 0
+        (dom/div #js {:style #js {:position "absolute"
+                                  :left (knobpos->left
+                                         (:position knob) target-width)}}
+                 (dom/div #js {:onMouseDown (fn [e]
+                                              (.persist e)
+                                              (.preventDefault e)
+                                              (put! mousedown e)
+                                              nil)
+                               :onClick (fn [e]
+                                          (when-not focused
+                                            (om/set-state! owner :focused true)
+                                            (put! invokes :invoked)))
+                               :style #js {:position "absolute"
+                                           :width knobw
+                                           :height 18
 
                                            :transitionProperty "all"
                                            :transitionDuration "0.2s"
-                                           ;; CSS triangle
-                                           :borderLeftStyle "solid"
-                                           :borderLeftColor "transparent"
-                                           :borderRightStyle "solid"
-                                           :borderRightColor "transparent"
-                                           :borderBottomStyle "solid"
-                                           :borderBottomColor "black"
 
-                                           :borderLeftWidth (if focused 23 6)
-                                           :borderRightWidth (if focused 23 6)
-                                           :borderBottomWidth (if focused 10 10)
+                                           :left (-> knobw (/ 2) -)
+                                           :cursor "pointer"}}
+                          (dom/div #js {:style
+                                        #js {:position "absolute"
+                                             :height 0
+                                             :width 0
 
-                                           :top 0}})
-                 (dom/div #js {:style
-                               #js {:position "absolute"
-                                    :height (if focused 18 4)
-                                    :width (if focused knobw 8)
-                                    :overflow "hidden"
+                                             :transitionProperty "all"
+                                             :transitionDuration "0.2s"
+                                             ;; CSS triangle
+                                             :borderLeftStyle "solid"
+                                             :borderLeftColor "transparent"
+                                             :borderRightStyle "solid"
+                                             :borderRightColor "transparent"
+                                             :borderBottomStyle "solid"
+                                             :borderBottomColor "black"
 
-                                    :transitionProperty "all"
-                                    :transitionDuration "0.2s"
+                                             :borderLeftWidth (if focused 23 6)
+                                             :borderRightWidth (if focused 23 6)
+                                             :borderBottomWidth 10
+
+                                             :top 0}})
+                          (dom/div #js {:style
+                                        #js {:position "absolute"
+                                             :height (if focused 18 4)
+                                             :width (if focused knobw 8)
+                                             :overflow "hidden"
+
+                                             :transitionProperty "all"
+                                             :transitionDuration "0.2s"
 
 
-                                    :borderRadius 3
-                                    :backgroundColor (rgb->hexcode (:color knob))
-                                    :border (if focused 0 "2px solid black")
-                                    :top 8}}
-                          (dom/div #js {:style #js {:textAlign "center"
-                                                    :visibility
-                                                    (when-not focused "hidden")}}
-                                   (om/build color-picker-component
-                                             {:target knob
-                                              :schema {:key :color}}
-                                             {:init-state {:invokes invokes
-                                                           :blurs blurs}}))))))))
+                                             :borderRadius 3
+                                             :backgroundColor (rgb->hexcode
+                                                               (:color knob))
+                                             :border (if focused
+                                                       0 "2px solid black")
+                                             :top 8}}
+                                   (dom/div #js {:style #js {:textAlign "center"
+                                                             :visibility
+                                                             (when-not focused
+                                                               "hidden")}}
+                                            (om/build color-picker-component
+                                                      {:target knob
+                                                       :schema {:key :color}}
+                                                      {:init-state
+                                                       {:invokes invokes
+                                                        :blurs blurs}})))))))))
 
 (def canvash 30)
 
@@ -214,10 +218,15 @@
                                                    :backgroundColor "black"}})
                          (dom/div #js {:style #js {:position "absolute"
                                                    :top 2
-                                                   :left (- (js/Math.round (/ width 2)) 2)}}
+                                                   :left (-> width
+                                                             (/ 2)
+                                                             js/Math.round
+                                                             (- 2))}}
                                   "0")
                          (dom/div #js {:style #js {:position "absolute"
-                                                   :left (js/Math.round (/ width 2))
+                                                   :left (-> width
+                                                             (/ 2)
+                                                             js/Math.round)
                                                    :bottom 0
                                                    :width 1
                                                    :height 7

@@ -18,8 +18,10 @@
 ;; Implemented as a macro because alts!! isn't available in ClojureScript,
 ;; so we're forced to use alt! in a (go ...) block, so we need a macro to
 ;; use the caller's (go ...) block.
+;; Returns the final value that was withdrawn from the channel, or nil
+;; if the channel was empty.
 (defmacro drain! [chn]
-  `(loop []
+  `(loop [v# nil]
      (cljs.core.async.macros/alt!
-       ~chn ([_] (recur))
-       :default :channels-are-drained)))
+       ~chn ([vv#] (recur vv#))
+       :default v#)))
