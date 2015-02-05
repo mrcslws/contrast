@@ -34,12 +34,16 @@
 
 (defn hexcode->rgb [s]
   ;; "#FFFFFF" => [255 255 255]
-  (map (fn [[start end]]
-         (js/parseInt (subs s start end) 16))
-       [[1 3] [3 5] [5 7]]))
+  (let [rgb (map (fn [[start end]]
+                   (js/parseInt (subs s start end) 16))
+                 [[1 3] [3 5] [5 7]])]
+    (when (every? integer? rgb)
+      rgb)))
 
 (defn rgb->hexcode [rgb]
-  (apply str "#" (map #(.toString % 16) rgb)))
+  (apply str "#" (map #(-> (str "0" (.toString % 16))
+                           (.slice -2))
+                      rgb)))
 
 (defmulti wavefn
   (fn [wave col period]
@@ -89,19 +93,19 @@
                        (+ c)))))
 
 (defn spectrum-dictionary [spectrum]
-  (let [{:keys [knob1-color knob1-value knob2-color knob2-value]} spectrum
-        dvalue (- knob2-value knob1-value)
-        [rs gs bs :as slopes] (map #(/ (- %2 %) dvalue)
-                                   knob1-color knob2-color)
-        [rz gz bz] (map (fn [c s]
-                          (- c (* s knob2-value)))
-                        knob2-color
-                        slopes)]
+  (let [{:keys [left right]} spectrum
+        dpos (- (:position right) (:position left))
+        [rs gs bs :as slopes] (map #(/ (- %2 %) dpos)
+                                   (:color left) (:color right))
+        [rzero gzero bzero] (map (fn [c s]
+                                   (- c (* s (:position right))))
+                                 (:color right)
+                                 slopes)]
     (fn [x]
       ;; TODO - consider js array for perf
-      [(-> x (* rs) (+ rz) js/Math.round)
-       (-> x (* gs) (+ gz) js/Math.round)
-       (-> x (* bs) (+ bz) js/Math.round)])))
+      [(-> x (* rs) (+ rzero) js/Math.round)
+       (-> x (* gs) (+ gzero) js/Math.round)
+       (-> x (* bs) (+ bzero) js/Math.round)])))
 
 (defn progress [start end p]
   (-> p

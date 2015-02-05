@@ -8,7 +8,7 @@
             [contrast.components.slider :refer [slider]]
             [contrast.illusions :as illusions]
             [contrast.components.numvec-editable :refer [numvec-editable]]
-            [contrast.components.color-picker :refer [color-picker-component]]
+            [contrast.components.spectrum-picker :refer [spectrum-picker]]
             [contrast.components.wave-picker :refer [wave-picker-component]]
             [contrast.components.wave-display :refer [wave-display-component]]
             [contrast.components.chan-handlers :refer [chan-genrender]]
@@ -26,28 +26,28 @@
                                       :transition-radius 250
                                       :selected-color nil
                                       :locked {:probed-row 30}
-                                      :spectrum {:knob1-color [136 136 136]
-                                                 :knob1-value -1
-                                                 :knob2-color [170 170 170]
-                                                 :knob2-value 1}}
+                                      :spectrum {:left {:color [136 136 136]
+                                                        :position -1}
+                                                 :right {:color [170 170 170]
+                                                         :position 1}}}
          :sweep-grating {:width 600
                          :height 256
                          :contrast 10
                          :selected-color nil
                          :locked {:probed-row 30}
-                         :spectrum {:knob1-color [136 136 136]
-                                    :knob1-value -1
-                                    :knob2-color [170 170 170]
-                                    :knob2-value 1}}
+                         :spectrum {:left {:color [136 136 136]
+                                           :position -1}
+                                    :right {:color [170 170 170]
+                                            :position 1}}}
 
          :harmonic-grating {:width 600
                             :height 256
                             :period 100
                             :selected-color nil
-                            :spectrum {:knob1-color [136 136 136]
-                                       :knob1-value -1
-                                       :knob2-color [170 170 170]
-                                       :knob2-value 1}
+                            :spectrum {:left {:color [136 136 136]
+                                              :position -1}
+                                       :right {:color [170 170 170]
+                                               :position 1}}
                             :wave :sine
                             :harmonic-magnitude "1 / n"
                             :harmonics [1 3 5 7 9 11 13
@@ -146,14 +146,6 @@
                                                     :paddingLeft 14
                                                     :borderRadius 5
                                                     :font "12px/1.4 Helvetica, Arial, sans-serif"}}
-                                   (section (dom/strong nil "Start with the midpoint of ")
-                                            (om/build color-picker-component {:target (:spectrum data)
-                                                                              :schema {:key :knob1-color}})
-
-                                            " and "
-                                            (om/build color-picker-component {:target (:spectrum data)
-                                                                              :schema {:key :knob2-color}})
-                                            ".")
                                    (section (dom/strong nil "For each n ∈ ")
                                             (numvec-editable {:width 300 :display "inline"}
                                                              data {:key :harmonics})
@@ -185,14 +177,14 @@
                                                                     :interval 1}))))
 
                                    (section (line (dom/strong nil "Use the sum of these waves to choose the color:"))
-                                            (line "(put scale here)")))
+                                            (line (spectrum-picker (:spectrum data) 300))))
                           (dom/div #js {:style #js {:marginTop 12
                                                     :paddingLeft 14}}
                                    (when-let [[r g b a]
                                               (:selected-color data)]
                                      (str "Hovered color: rgba(" r "," g "," b "," a ")"))))
                  (dom/div #js {:style #js {:marginTop 12}}
-                          (om/build wave-display-component data)))))))
+                          (om/build wave-display-component (select-keys data [:width :wave :harmonics :period]))))))))
 
 (defn app-state->html [s]
   (if (map? s)
@@ -218,6 +210,8 @@
 
 ;; This shouldn't be included in production unless it's updated to be
 ;; "pay-per-play", i.e. not running code when the display isn't toggled.
+
+;; It's really not an acceptable component. It modifies the DOM elsewhere.
 (defn app-state-display [app owner]
   (reify
     om/IDisplayName

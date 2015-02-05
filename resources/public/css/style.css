@@ -37,3 +37,7 @@ div.under-the-hood {
 .hood-open div.under-the-hood {
 	display:block;
 }
+
+.no-wrapper::-webkit-color-swatch-wrapper {
+    padding: 0;
+}
