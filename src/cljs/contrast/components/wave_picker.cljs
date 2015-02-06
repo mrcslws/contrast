@@ -60,7 +60,7 @@
 
                                                        :default
                                                        "1px dashed black")
-                                              :marginRight 16}
+                                              :marginRight 14}
                                   :onMouseMove #(om/update! target (:key schema) k)
                                   :onClick #(om/set-state! owner :locked k)
                                   :onMouseOut #(om/update! target (:key schema)

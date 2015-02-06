@@ -11,6 +11,7 @@
             [contrast.components.spectrum-picker :refer [spectrum-picker]]
             [contrast.components.wave-picker :refer [wave-picker-component]]
             [contrast.components.wave-display :refer [wave-display-component]]
+            [contrast.components.color-picker :refer [color-picker-component]]
             [contrast.components.chan-handlers :refer [chan-genrender]]
             [contrast.canvas-inspectors :as inspectors :refer [inspected]]
             [cljs.core.async :refer [put! chan mult tap close! <!]])
@@ -21,16 +22,16 @@
 (defonce app-state
   (atom {:hood-open? false
 
-         :single-sinusoidal-gradient {:width 600
+         :single-sinusoidal-gradient {:width 500
                                       :height 256
                                       :transition-radius 250
                                       :selected-color nil
                                       :locked {:probed-row 30}
-                                      :spectrum {:left {:color [136 136 136]
+                                      :spectrum {:left {:color [0 0 0]
                                                         :position -1}
-                                                 :right {:color [170 170 170]
+                                                 :right {:color [255 255 255]
                                                          :position 1}}}
-         :sweep-grating {:width 600
+         :sweep-grating {:width 500
                          :height 256
                          :contrast 10
                          :selected-color nil
@@ -40,7 +41,7 @@
                                     :right {:color [170 170 170]
                                             :position 1}}}
 
-         :harmonic-grating {:width 600
+         :harmonic-grating {:width 500
                             :height 256
                             :period 100
                             :selected-color nil
@@ -54,6 +55,44 @@
                                         15 17 19 21 23 25
                                         27 29 31 33 35 37 39]}}))
 
+
+(defn illusion [& els]
+  (apply dom/div #js {:style #js {:display "inline-block"}}
+         els))
+
+(defn algorithm [& els]
+  (dom/div #js {:style #js {:display "inline-block"
+                            :marginLeft 24
+                            :verticalAlign "top"}}
+           (apply dom/div #js {:style
+                               #js {:backgroundColor "#f2f2f2"
+                                    :background "linear-gradient(#FFFFFF 0%, #f2f2f2 100%)"
+                                    :border "1px solid #e2e2e2"
+                                    :paddingTop 8
+                                    :paddingBottom 8
+                                    :paddingLeft 14
+                                    :borderRadius 5
+                                    :font "12px/1.4 Helvetica, Arial, sans-serif"}}
+                  els)))
+
+(defn section [& els]
+  (apply dom/div #js {:style #js {:marginBottom 12}}
+         els))
+
+(defn line [& els]
+  (apply dom/div #js {:style #js {:position "relative"
+                                  :paddingTop 2}}
+         els))
+
+(defn indented [& els]
+  (apply dom/div #js {:style #js {:marginLeft 20}}
+         els))
+
+(defn heading [& els]
+  (apply dom/div #js {:style #js {:fontWeight "bold"
+                                  :marginBottom 6}}
+         els))
+
 (defn single-gradient [app owner]
   (reify
     om/IDisplayName
@@ -64,21 +103,36 @@
     (render [_]
       (let [data (:single-sinusoidal-gradient app)
             {:keys [width height]} data]
-        (dom/div #js {:style #js {:marginLeft 40}}
-                 (inspected (partial cnv/canvas data width height
-                                     (illusions/single-sinusoidal-gradient-painter data))
-                            data
-                            (inspectors/comp (inspectors/row-display data)
-                                             (inspectors/row-probe data)
-                                             (inspectors/eyedropper-zone data)
-                                             (inspectors/color-exposer data)))
-                 (slider {:width 280 :marginLeft 140}
-                         data
-                         {:key :transition-radius
-                          :min 0
-                          :max 300
-                          :str-format "%dpx"
-                          :interval 1}))))))
+        (dom/div nil
+                 (illusion (inspected (partial cnv/canvas data width height
+                                               (illusions/single-sinusoidal-gradient-painter data))
+                                      data
+                                      (inspectors/comp (inspectors/row-display data)
+                                                       (inspectors/row-probe data)
+                                                       (inspectors/eyedropper-zone data)
+                                                       (inspectors/color-exposer data))))
+                 (algorithm (dom/div #js {:style #js {:width 280}} ;; TODO temporary hack.
+                                     (section (heading "Transition from:")
+                                              ;; TODO This isn't wired up to the illusion yet.
+                                              (indented (line (om/build color-picker-component
+                                                                        {:target (-> data :spectrum :left)
+                                                                         :schema {:key :color}})
+                                                              " <-> "
+                                                              (om/build color-picker-component
+                                                                        {:target (-> data :spectrum :right)
+                                                                         :schema {:key :color}}))))
+                                     (section (heading "over a distance of:")
+                                              (indented (line (:transition-radius data) " pixels."
+                                                              (slider {:position "absolute"
+                                                                       :right 13
+                                                                       :top -20
+                                                                       :width 180}
+                                                                      data
+                                                                      {:key :transition-radius
+                                                                       :min 0
+                                                                       :max 250
+                                                                       :str-format "%dpx"
+                                                                       :interval 1})))))))))))
 
 (defn sweep-grating [app owner]
   (reify
@@ -90,30 +144,24 @@
     (render [_]
       (let [data (:sweep-grating app)
             {:keys [width height]} data]
-        (dom/div #js {:style #js {:marginLeft 40}}
-                 (inspected (partial cnv/canvas data width height
-                                     (illusions/sweep-grating-painter data))
-                            data
-                            (inspectors/comp (inspectors/row-display data)
-                                             (inspectors/row-probe data)
-                                             (inspectors/eyedropper-zone data)
-                                             (inspectors/color-exposer data)))
-                 (slider {:width 280 :marginLeft 140}
-                         (:sweep-grating app)
-                         {:key :contrast
-                          :min 0
-                          :max 128
-                          :str-format "%.1f rgb units"
-                          :interval 0.5}))))))
+        (dom/div nil
+                 (illusion (inspected (partial cnv/canvas data width height
+                                               (illusions/sweep-grating-painter data))
+                                      data
+                                      (inspectors/comp (inspectors/row-display data)
+                                                       (inspectors/row-probe data)
+                                                       (inspectors/eyedropper-zone data)
+                                                       (inspectors/color-exposer data))))
+                 (algorithm (dom/div #js {:style #js {:width 170}} ;; TODO temporary hack.
+                                     (section (heading "Transition from:")
+                                              (indented (line (om/build color-picker-component
+                                                                        {:target (-> data :spectrum :left)
+                                                                         :schema {:key :color}})
+                                                              " <-> "
+                                                              (om/build color-picker-component
+                                                                        {:target (-> data :spectrum :right)
+                                                                         :schema {:key :color}})))))))))))
 
-(defn section [& els]
-  (apply dom/div #js {:style #js {:marginBottom 12}}
-         els))
-
-(defn line [& els]
-  (apply dom/div #js {:style #js {:position "relative"
-                                  :paddingTop 2}}
-         els))
 
 ;; TODO - I'm seeing the harmonic grating get unmounted. Hmm?
 ;; I think it was when I hovered over the wave picker.
@@ -129,63 +177,52 @@
       (let [data (:harmonic-grating app)
             {:keys [width height]} data]
         (dom/div nil
-                 (dom/div #js {:style #js {:display "inline-block"
-                                           :verticalAlign "top"}}
-                          (inspected (partial cnv/canvas data width height
-                                              (illusions/harmonic-grating-painter data))
-                                     data
-                                     (inspectors/comp (inspectors/eyedropper-zone data)
-                                                      (inspectors/color-exposer data))))
-                 (dom/div #js {:style #js {:display "inline-block"
-                                           :marginLeft 24}}
-                          (dom/div #js {:style #js {:backgroundColor "#f2f2f2"
-                                                    :background "linear-gradient(#FFFFFF 0%, #f2f2f2 100%)"
-                                                    :border "1px solid #e2e2e2"
-                                                    :paddingTop 8
-                                                    :paddingBottom 8
-                                                    :paddingLeft 14
-                                                    :borderRadius 5
-                                                    :font "12px/1.4 Helvetica, Arial, sans-serif"}}
-                                   (section (dom/strong nil "For each n ∈ ")
-                                            (numvec-editable {:width 300 :display "inline"}
-                                                             data {:key :harmonics})
-                                            (dom/div #js {:style #js {:paddingTop 6
-                                                                      :marginLeft 20}}
-                                                     (line "Create a " (name (:wave data)) " wave "
-                                                           (om/build wave-picker-component {:target data
-                                                                                            :schema {:key :wave}
-                                                                                            :period (:period data)}))
-                                                     (line "with amplitude "
-                                                           (dom/input #js {:type "text" :value "1 / n"
-                                                                           :style #js {:width 30
-                                                                                       :textAlign "center"}}))
-                                                     (line " and period "
-                                                           (dom/input #js {:type "text" :value "1 / n"
-                                                                           :style #js {:width 30
-                                                                                       :textAlign "center"}})
-                                                           " * " (:period data) " pixels."
-                                                           (slider {:position "absolute"
-                                                                    :right 16
-                                                                    :top 6
-                                                                    :width 180
-                                                                    :display "inline-block"}
-                                                                   data
-                                                                   {:key :period
-                                                                    :min 1
-                                                                    :max 1000
-                                                                    :str-format "%dpx"
-                                                                    :interval 1}))))
+                 (illusion (inspected (partial cnv/canvas data width height
+                                               (illusions/harmonic-grating-painter data))
+                                      data
+                                      (inspectors/comp (inspectors/eyedropper-zone data)
+                                                       (inspectors/color-exposer data))))
+                 (algorithm (section (heading "For each n ∈ "
+                                              (numvec-editable {:width 300 :display "inline"}
+                                                               data {:key :harmonics}))
 
-                                   (section (line (dom/strong nil "Use the sum of these waves to choose the color:"))
-                                            (line (spectrum-picker data 300
-                                                                   (inspectors/comp (inspectors/eyedropper-zone data)
-                                                                                    (inspectors/color-exposer data))))))
-                          ;; (dom/div #js {:style #js {:marginTop 12
-                          ;;                           :paddingLeft 14}}
-                          ;;          (when-let [[r g b a]
-                          ;;                     (:selected-color data)]
-                          ;;            (str "Hovered color: rgba(" r "," g "," b "," a ")")))
-                          )
+                                     (indented (line "Create a " (name (:wave data)) " wave "
+                                                     (om/build wave-picker-component {:target data
+                                                                                      :schema {:key :wave}
+                                                                                      :period (:period data)}))
+                                               (line "with amplitude "
+                                                     (dom/input #js {:type "text" :value "1 / n"
+                                                                     :style #js {:width 30
+                                                                                 :textAlign "center"}}))
+                                               (line " and period "
+                                                     (dom/input #js {:type "text" :value "1 / n"
+                                                                     :style #js {:width 30
+                                                                                 :textAlign "center"}})
+                                                     " * " (:period data) " pixels."
+                                                     (slider {:position "absolute"
+                                                              :right 13
+                                                              ;; TODO the slider is really bad.
+                                                              ;; This margin is needed for the animation to be seen.
+                                                              :top -15
+                                                              :width 180
+                                                              :display "inline-block"}
+                                                             data
+                                                             {:key :period
+                                                              :min 1
+                                                              :max 1000
+                                                              :str-format "%dpx"
+                                                              :interval 1}))))
+
+                            (section (heading "Use the sum of these waves to choose the color:")
+                                     (indented (line (spectrum-picker data 360
+                                                                      (inspectors/comp (inspectors/eyedropper-zone data)
+                                                                                       (inspectors/color-exposer data)))))))
+                 ;; (dom/div #js {:style #js {:marginTop 12
+                 ;;                           :paddingLeft 14}}
+                 ;;          (when-let [[r g b a]
+                 ;;                     (:selected-color data)]
+                 ;;            (str "Hovered color: rgba(" r "," g "," b "," a ")")))
+
                  (dom/div #js {:style #js {:marginTop 12}}
                           (om/build wave-display-component (select-keys data [:width :wave :harmonics :period]))))))))
 

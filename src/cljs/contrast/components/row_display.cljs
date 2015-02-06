@@ -40,13 +40,13 @@
     om/IRender
     (render [_]
       (dom/div {:onMouseMove #(om/set-state! owner :force-update 1)}
-               (cnv/canvas config 600 40 (painter config owner) subscriber)))))
+               (cnv/canvas config (:width config) 40 (painter config owner) subscriber)))))
 
 (defn row-display
-  ([target schema imagedata]
-     (row-display target schema imagedata nil))
-  ([target schema imagedata subscriber]
+  ([width target schema imagedata]
+     (row-display width target schema imagedata nil))
+  ([width target schema imagedata subscriber]
      (om/build row-display-component
                {:target target :schema schema
-                :imagedata imagedata}
+                :imagedata imagedata :width width}
                {:opts {:subscriber subscriber}})))

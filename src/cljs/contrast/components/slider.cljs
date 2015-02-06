@@ -106,7 +106,7 @@
         :underlap-y 5}
        (dom/div #js {:ref "slider"
                      :style #js {;; Make room for the bounce.
-                                 :marginTop 4
+                                 :marginTop 26
                                  :marginBottom 4
                                  :height 4}}
                 (apply dom/div #js {:style #js {:position "absolute"
