@@ -1,9 +1,14 @@
 (ns contrast.pixel
   (:refer-clojure :exclude [nth count get]))
 
-(defn xy->base [imagedata x y]
-  (-> y (* (.-width imagedata)) (+ x) (* 4)))
+(defn base [width x y]
+  (-> y (* width) (+ x) (* 4)))
 
+(defn xy->base [imagedata x y]
+  (base (.-width imagedata) x y))
+
+;; TODO this still isn't great for perf.
+;; Gets the width way too often. Shows up in perf traces.
 (defn write! [imagedata x y r g b a]
   (let [base (xy->base imagedata x y)]
     (doto (.-data imagedata)

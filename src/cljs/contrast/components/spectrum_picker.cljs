@@ -3,7 +3,7 @@
             [om.dom :as dom :include-macros true]
             [cljs.core.async :refer [<! put! chan alts! take!]]
             [goog.events :as events]
-            [contrast.common :refer [progress spectrum-dictionary rgb->hexcode]]
+            [contrast.common :refer [progress spectrum-dictionary rgb->hexcode trace-rets]]
             [contrast.components.canvas :as cnv]
             [contrast.canvas-inspectors :refer [inspected]]
             [contrast.components.color-picker :refer [color-picker-component]]
@@ -197,7 +197,7 @@
     om/IRenderState
     (render-state [_ {:keys [width knob-actions dragging]}]
 
-      (let [spectrum (:spectrum data)]
+      (let [spectrum (-> data :graphic :spectrum)]
         (dom/div #js {:style #js {:position "relative"
                                   :width width
                                   :marginRight 12
@@ -257,14 +257,18 @@
                                    (om/build color-knob-component (:right spectrum)
                                              {:init-state {:listener knob-actions}
                                               :state {:target-width width}}))
-                          (inspected (partial cnv/canvas spectrum width canvash
-                                              (cnv/solid-vertical-stripe-painter
-                                               (comp
-                                                ;; [-1 1] -> color
-                                                (spectrum-dictionary spectrum)
+                          (inspected (fn [ch]
+                                       (cnv/canvas spectrum width canvash
+                                                   (cnv/idwriter->painter
+                                                    (trace-rets
+                                                     (cnv/solid-vertical-stripe-idwriter
+                                                      (comp
+                                                       ;; [-1 1] -> color
+                                                       (spectrum-dictionary spectrum)
 
-                                                ;; col -> [-1 1]
-                                                #(dec (* 2 (/ % width))))))
+                                                       ;; col -> [-1 1]
+                                                       #(dec (* 2 (/ % width)))))
+                                                     ch))))
 
                                      ;; TODO - is it possible to cleverly use ref-cursors
                                      ;; to get away from this canary approach? The only

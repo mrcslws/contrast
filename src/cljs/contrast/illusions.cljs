@@ -6,13 +6,12 @@
   (:require-macros [contrast.macros :refer [dorange]]))
 
 ;; TODO decomplect vertical `progress->color` from horizontal
-(defn two-sides-painter [config interval-lookup]
-  (fn [cnv]
+(defn two-sides-idwriter [config interval-lookup]
+  (fn [imagedata]
     (let [{:keys [transition-radius]} config
-          ctx (.getContext cnv "2d")
-          width (.-width cnv)
-          height (.-height cnv)
-          imagedata (.createImageData ctx width height)
+          width (.-width imagedata)
+          height (.-height imagedata)
+          d (.-data imagedata)
           start 0
           end 255
           middle 127
@@ -28,13 +27,27 @@
               rcolor (rprogress->color (/ row height))
               progress->color (interval-lookup lcolor rcolor)]
           (dorange [col leftx transx]
-                   (pixel/write! imagedata col row lcolor lcolor lcolor 255))
+                   (let [base (pixel/base width col row)]
+                     (doto d
+                       (aset base lcolor)
+                       (aset (+ base 1) lcolor)
+                       (aset (+ base 2) lcolor)
+                       (aset (+ base 3) 255))))
           (dorange [col rightx width]
-                   (pixel/write! imagedata col row rcolor rcolor rcolor 255))
+                   (let [base (pixel/base width col row)]
+                     (doto d
+                       (aset base rcolor)
+                       (aset (+ base 1) rcolor)
+                       (aset (+ base 2) rcolor)
+                       (aset (+ base 3) 255))))
           (dorange [col transx rightx]
-                   (let [c (progress->color (/ (- col transx) transw))]
-                     (pixel/write! imagedata col row c c c 255)))))
-      (.putImageData ctx imagedata 0 0)
+                   (let [c (progress->color (/ (- col transx) transw))
+                         base (pixel/base width col row)]
+                     (doto d
+                       (aset base c)
+                       (aset (+ base 1) c)
+                       (aset (+ base 2) c)
+                       (aset (+ base 3) 255))))))
       imagedata)))
 
 (defn number-line-maker [ptransform]
@@ -55,8 +68,8 @@
       inc
       (/ 2)))
 
-(defn single-sinusoidal-gradient-painter [config]
-  (two-sides-painter config (number-line-maker linear->sinusoidal)))
+(defn single-sinusoidal-gradient-idwriter [config]
+  (two-sides-idwriter config (number-line-maker linear->sinusoidal)))
 
 (defn accelerating-sine-wave [{:keys [contrast]}]
   (fn [x]
@@ -65,8 +78,8 @@
         (js/Math.pow 3)
         js/Math.sin)))
 
-(defn sweep-grating-painter [config]
-  (cnv/gradient-vertical-stripe-painter
+(defn sweep-grating-idwriter [config]
+  (cnv/gradient-vertical-stripe-idwriter
    (comp
     (spectrum-dictionary (:spectrum config))
     (fn [_] 0))
@@ -91,7 +104,7 @@
                       (+ s))
                   (inc i))))))))
 
-(defn harmonic-grating-painter [config]
-  (cnv/solid-vertical-stripe-painter (comp
-                                      (spectrum-dictionary (:spectrum config))
-                                      (sums-of-harmonics config))))
+(defn harmonic-grating-idwriter [config]
+  (cnv/solid-vertical-stripe-idwriter (comp
+                                       (spectrum-dictionary (:spectrum config))
+                                       (sums-of-harmonics config))))

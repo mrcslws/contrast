@@ -75,7 +75,6 @@
       (str "%")))
 
 ;; TODO:
-;; - Discover what's reusable between this and row-probe
 ;; - Touch compatibility
 ;; - Keyboard compatibility
 ;; - Text styling extension point?

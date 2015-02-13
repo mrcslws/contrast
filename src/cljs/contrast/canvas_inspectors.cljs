@@ -47,23 +47,26 @@
 
 (defn eyedropper-zone [data]
   (fn [r imgdata]
-    (eyedropper-zone/eyedropper-zone data {:key :selected-color} imgdata r)))
+    (eyedropper-zone/eyedropper-zone (:color-inspect data) {:key :selected-color} imgdata r)))
 
 (defn row-probe [data]
   (fn [r _]
-    (row-probe/row-probe data {:key :probed-row} {:track-border-only? true} r)))
+    (row-probe/row-probe (:row-inspect data) {:key :probed-row} {:track-border-only? true} r)))
 
 (defn row-display [data]
   (fn [r imgdata]
     (dom/div nil
              r
-             (dom/div #js {:style #js {:marginTop 20
+             (dom/div #js {:className "testing"
+                           :style #js {:marginTop 20
                                        :display "inline-block"
                                        :position "relative"
                                        :left -3
                                        :borderLeft "3px solid red"
                                        :borderRight "3px solid red"}}
-                      (inspected (partial row-display/row-display (:width data) data {:key :probed-row} imgdata)
+                      (inspected (partial row-display/row-display
+                                          (select-keys data [:graphic :row-inspect])
+                                          imgdata)
                                  data
                                  (comp (eyedropper-zone data)
                                        (color-exposer data)))))))

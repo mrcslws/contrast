@@ -79,6 +79,7 @@
     (render-state [_ {:keys [content underlap-x underlap-y on-click
                              determine-width-from-contents?]}]
       (dom/div #js {:ref "tracking-area"
+                    :className "TrackingArea"
                     :onMouseEnter #(move-handler % owner)
                     :onMouseMove #(move-handler % owner)
                     :onMouseOut #(move-handler % owner)
@@ -117,6 +118,7 @@
                (reference-point "tse" {:right 0 :bottom 0})
                (apply dom/div
                       #js {:ref "content-container"
+                           :className "ContentContainer"
                            :style #js {;; Positioned from start of content,
                                        ;; rather than start of tracking area,
                                        ;; which is shifted due to padding.

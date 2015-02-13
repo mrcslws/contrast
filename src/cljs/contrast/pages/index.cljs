@@ -4,6 +4,7 @@
             [goog.events :as events]
             [goog.events.KeyCodes :as gkeys]
             [contrast.page-triggers :as page-triggers]
+            [contrast.common :refer [trace-rets]]
             [contrast.components.canvas :as cnv]
             [contrast.components.slider :refer [slider]]
             [contrast.illusions :as illusions]
@@ -22,38 +23,38 @@
 (defonce app-state
   (atom {:hood-open? false
 
-         :single-sinusoidal-gradient {:width 500
-                                      :height 256
-                                      :transition-radius 250
-                                      :selected-color nil
-                                      :locked {:probed-row 30}
-                                      :spectrum {:left {:color [0 0 0]
-                                                        :position -1}
-                                                 :right {:color [255 255 255]
-                                                         :position 1}}}
-         :sweep-grating {:width 500
-                         :height 256
-                         :contrast 10
-                         :selected-color nil
-                         :locked {:probed-row 30}
-                         :spectrum {:left {:color [136 136 136]
-                                           :position -1}
-                                    :right {:color [170 170 170]
-                                            :position 1}}}
+         :single-sinusoidal-gradient {:color-inspect {:selected-color nil}
+                                      :row-inspect {:locked {:probed-row 30}}
+                                      :graphic {:width 500
+                                                :height 256
+                                                :transition-radius 250
+                                                :spectrum {:left {:color [0 0 0]
+                                                                  :position -1}
+                                                           :right {:color [255 255 255]
+                                                                   :position 1}}}}
+         :sweep-grating {:color-inspect {:selected-color nil}
+                         :row-inspect {:locked {:probed-row 30}}
+                         :graphic {:width 500
+                                   :height 256
+                                   :contrast 10
+                                   :spectrum {:left {:color [136 136 136]
+                                                     :position -1}
+                                              :right {:color [170 170 170]
+                                                      :position 1}}}}
 
-         :harmonic-grating {:width 500
-                            :height 256
-                            :period 100
-                            :selected-color nil
-                            :spectrum {:left {:color [136 136 136]
-                                              :position -1}
-                                       :right {:color [170 170 170]
-                                               :position 1}}
-                            :wave :sine
-                            :harmonic-magnitude "1 / n"
-                            :harmonics [1 3 5 7 9 11 13
-                                        15 17 19 21 23 25
-                                        27 29 31 33 35 37 39]}}))
+         :harmonic-grating {:color-inspect {:selected-color nil}
+                            :graphic {:width 500
+                                      :height 256
+                                      :period 100
+                                      :spectrum {:left {:color [136 136 136]
+                                                        :position -1}
+                                                 :right {:color [170 170 170]
+                                                         :position 1}}
+                                      :wave :sine
+                                      :harmonic-magnitude "1 / n"
+                                      :harmonics [1 3 5 7 9 11 13
+                                                  15 17 19 21 23 25
+                                                  27 29 31 33 35 37 39]}}}))
 
 
 (defn illusion [& els]
@@ -102,10 +103,15 @@
     om/IRender
     (render [_]
       (let [data (:single-sinusoidal-gradient app)
-            {:keys [width height]} data]
+            gdata (:graphic data)
+            {:keys [width height]} gdata]
         (dom/div nil
-                 (illusion (inspected (partial cnv/canvas data width height
-                                               (illusions/single-sinusoidal-gradient-painter data))
+                 (illusion (inspected #(cnv/canvas gdata
+                                                   width height
+                                                   (cnv/idwriter->painter
+                                                    (trace-rets
+                                                     (illusions/single-sinusoidal-gradient-idwriter gdata)
+                                                     %)))
                                       data
                                       (inspectors/comp (inspectors/row-display data)
                                                        (inspectors/row-probe data)
@@ -115,19 +121,19 @@
                                      (section (heading "Transition from:")
                                               ;; TODO This isn't wired up to the illusion yet.
                                               (indented (line (om/build color-picker-component
-                                                                        {:target (-> data :spectrum :left)
+                                                                        {:target (-> gdata :spectrum :left)
                                                                          :schema {:key :color}})
                                                               " <-> "
                                                               (om/build color-picker-component
-                                                                        {:target (-> data :spectrum :right)
+                                                                        {:target (-> gdata :spectrum :right)
                                                                          :schema {:key :color}}))))
                                      (section (heading "over a distance of:")
-                                              (indented (line (:transition-radius data) " pixels."
+                                              (indented (line (:transition-radius gdata) " pixels."
                                                               (slider {:position "absolute"
                                                                        :right 13
                                                                        :top -20
                                                                        :width 180}
-                                                                      data
+                                                                      gdata
                                                                       {:key :transition-radius
                                                                        :min 0
                                                                        :max 250
@@ -143,10 +149,15 @@
     om/IRender
     (render [_]
       (let [data (:sweep-grating app)
-            {:keys [width height]} data]
+            gdata (:graphic data)
+            {:keys [width height]} gdata]
         (dom/div nil
-                 (illusion (inspected (partial cnv/canvas data width height
-                                               (illusions/sweep-grating-painter data))
+                 (illusion (inspected #(cnv/canvas gdata
+                                                   width height
+                                                   (cnv/idwriter->painter
+                                                    (trace-rets
+                                                     (illusions/sweep-grating-idwriter gdata)
+                                                     %)))
                                       data
                                       (inspectors/comp (inspectors/row-display data)
                                                        (inspectors/row-probe data)
@@ -155,16 +166,13 @@
                  (algorithm (dom/div #js {:style #js {:width 170}} ;; TODO temporary hack.
                                      (section (heading "Transition from:")
                                               (indented (line (om/build color-picker-component
-                                                                        {:target (-> data :spectrum :left)
+                                                                        {:target (-> gdata :spectrum :left)
                                                                          :schema {:key :color}})
                                                               " <-> "
                                                               (om/build color-picker-component
-                                                                        {:target (-> data :spectrum :right)
+                                                                        {:target (-> gdata :spectrum :right)
                                                                          :schema {:key :color}})))))))))))
 
-
-;; TODO - I'm seeing the harmonic grating get unmounted. Hmm?
-;; I think it was when I hovered over the wave picker.
 
 (defn harmonic-grating [app owner]
   (reify
@@ -175,21 +183,27 @@
     om/IRender
     (render [_]
       (let [data (:harmonic-grating app)
-            {:keys [width height]} data]
+            gdata (:graphic data)
+            {:keys [width height]} gdata]
         (dom/div nil
-                 (illusion (inspected (partial cnv/canvas data width height
-                                               (illusions/harmonic-grating-painter data))
-                                      data
-                                      (inspectors/comp (inspectors/eyedropper-zone data)
-                                                       (inspectors/color-exposer data))))
+                 (illusion (inspected
+                            #(cnv/canvas gdata
+                                         width height
+                                         (cnv/idwriter->painter
+                                          (trace-rets
+                                           (illusions/harmonic-grating-idwriter gdata)
+                                           %)))
+                            data
+                            (inspectors/comp (inspectors/eyedropper-zone data)
+                                             (inspectors/color-exposer data))))
                  (algorithm (section (heading "For each n ∈ "
                                               (numvec-editable {:width 300 :display "inline"}
-                                                               data {:key :harmonics}))
+                                                               gdata {:key :harmonics}))
 
-                                     (indented (line "Create a " (name (:wave data)) " wave "
-                                                     (om/build wave-picker-component {:target data
+                                     (indented (line "Create a " (name (:wave gdata)) " wave "
+                                                     (om/build wave-picker-component {:target gdata
                                                                                       :schema {:key :wave}
-                                                                                      :period (:period data)}))
+                                                                                      :period (:period gdata)}))
                                                (line "with amplitude "
                                                      (dom/input #js {:type "text" :value "1 / n"
                                                                      :style #js {:width 30
@@ -198,7 +212,7 @@
                                                      (dom/input #js {:type "text" :value "1 / n"
                                                                      :style #js {:width 30
                                                                                  :textAlign "center"}})
-                                                     " * " (:period data) " pixels."
+                                                     " * " (:period gdata) " pixels."
                                                      (slider {:position "absolute"
                                                               :right 13
                                                               ;; TODO the slider is really bad.
@@ -206,10 +220,10 @@
                                                               :top -15
                                                               :width 180
                                                               :display "inline-block"}
-                                                             data
+                                                             gdata
                                                              {:key :period
                                                               :min 1
-                                                              :max 1000
+                                                              :max 5000
                                                               :str-format "%dpx"
                                                               :interval 1}))))
 
@@ -224,7 +238,7 @@
                  ;;            (str "Hovered color: rgba(" r "," g "," b "," a ")")))
 
                  (dom/div #js {:style #js {:marginTop 12}}
-                          (om/build wave-display-component (select-keys data [:width :wave :harmonics :period]))))))))
+                          (om/build wave-display-component (select-keys gdata [:width :wave :harmonics :period]))))))))
 
 (defn app-state->html [s]
   (if (map? s)

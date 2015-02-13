@@ -6,30 +6,32 @@
             [contrast.components.tracking-area :refer [tracking-area]]
             [contrast.common :refer [wavefn wavey->ycoord]]))
 
-(defn painter [wave shift vlinefreq]
-  (fn [cnv]
-    (let [ctx (.getContext cnv "2d")
-          width (.-width cnv)
-          height (.-height cnv)
-          imagedata (.createImageData ctx width height)
+(defn idwriter [wave shift vlinefreq]
+  (fn [imagedata]
+    (let [width (.-width imagedata)
+          height (.-height imagedata)
+          d (.-data imagedata)
           period (/ width 2)
           amplitude (/ (dec height) 2)
           cshift (* shift period)]
-      (cnv/clear ctx)
       (dotimes [col width]
-        (pixel/write! imagedata col (wavey->ycoord (wavefn wave (+ cshift col)
-                                                           period)
-                                                   amplitude height)
-                      0 0 0 255))
+        (let [row (wavey->ycoord (wavefn wave (+ cshift col)
+                                         period)
+                                 amplitude height)
+              base (pixel/base width col row)]
+          (doto d
+            (aset (+ base 3) 255))))
       (when (pos? vlinefreq)
         (loop [i 0]
           (let [col (js/Math.round(+ cshift (* i (/ period vlinefreq))))]
             (when (< col width)
               (when (>= col 0)
                 (dotimes [row height]
-                  (pixel/write! imagedata col row 0 0 0 255)))
-              (recur (inc i))))))
-      (.putImageData ctx imagedata 0 0))))
+                  (let [base (pixel/base width col row)]
+                    (doto d
+                      (aset (+ base 3) 255)))))
+              (recur (inc i)))))))
+    imagedata))
 
 (defn wave-picker-component [{:keys [target schema] :as data} owner]
   (reify
@@ -65,7 +67,9 @@
                                   :onClick #(om/set-state! owner :locked k)
                                   :onMouseOut #(om/update! target (:key schema)
                                                            (om/get-state owner :locked))}
-                             (cnv/canvas data 75 20 (painter k shift vlinefreq))))
+                             (cnv/canvas data 75 20
+                                         (cnv/idwriter->painter
+                                          (idwriter k shift vlinefreq)))))
                   [[:sine 0 0]
                    [:sawtooth 0.5 1]
                    [:triangle -0.25 0]

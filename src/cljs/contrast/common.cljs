@@ -1,7 +1,8 @@
 (ns contrast.common
   (:require [om.core :as om :include-macros true]
             [om.dom :as dom :include-macros true]
-            [contrast.dom :as domh]))
+            [contrast.dom :as domh]
+            [cljs.core.async :refer [put!]]))
 
 ;; Common components
 
@@ -112,3 +113,10 @@
       (* (- end start))
       (+ start)
       js/Math.round))
+
+(defn trace-rets [f ch]
+  (fn [& args]
+    (let [r (apply f args)]
+      (when ch
+        (put! ch r))
+      r)))
