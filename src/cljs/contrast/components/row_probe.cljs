@@ -3,39 +3,43 @@
             [om.dom :as dom :include-macros true]
             [contrast.dom :as domh]
             [contrast.components.tracking-area :refer [tracking-area]]
-            [contrast.common :refer [wide-background-image]]))
+            [contrast.common :refer [wide-background-image]]
+            [contrast.state :as state]))
 
 (def lens-overshot 5)
 (def lens-h 3)
 
 ;; TODO - bug: when the row probe is not tracking, you can still hover
 ;; over it, blocking you from hovering over the content.
-(defn on-move [{:keys [target schema]} owner]
+(defn on-move [row-inspect owner]
   (fn [_ content-y]
     (om/set-state! owner :is-tracking? true)
-    (let [ch (.-offsetHeight (om/get-node owner "content"))]
+    (let [schema (om/get-state owner :schema)
+          ch (.-offsetHeight (om/get-node owner "content"))]
       (when (and (>= content-y 0)
                  (< content-y ch))
-       (om/update! target (:key schema) content-y)
+       (om/update! row-inspect (:key schema) content-y)
        (om/set-state! owner :lens-top content-y)))))
 
-(defn revert-to-locked! [{:keys [target schema]} owner]
-  (let [v (get-in target [:locked (:key schema)])]
-    (om/update! target (:key schema) v)
+(defn revert-to-locked! [row-inspect owner]
+  (let [schema (om/get-state owner :schema)
+        v (get-in row-inspect [:locked (:key schema)])]
+    (om/update! row-inspect (:key schema) v)
     (om/set-state! owner :lens-top v)))
 
-(defn on-exit [config owner]
+(defn on-exit [row-inspect owner]
   (fn [_ _]
     (om/set-state! owner :is-tracking? false)
-    (revert-to-locked! config owner)))
+    (revert-to-locked! row-inspect owner)))
 
-(defn on-click [{:keys [target schema]} owner]
+(defn on-click [row-inspect owner]
   (fn []
     ;; TODO the locked value really needs to be indicated
-    (om/update! (:locked target) (:key schema)
-                (get target (:key schema)))))
+    (let [key (:key (om/get-state owner :schema))]
+        (om/update! (:locked row-inspect) key
+                 (get row-inspect key)))))
 
-(defn row-probe-component [config owner]
+(defn row-probe-component [k owner]
   (reify
     om/IDisplayName
     (display-name [_]
@@ -49,62 +53,65 @@
 
     om/IWillMount
     (will-mount [_]
-      (revert-to-locked! config owner))
+      (revert-to-locked! (om/observe owner (state/row-inspect k)) owner))
 
     om/IRenderState
     (render-state [_ {:keys [content lens-top track-border-only? is-tracking?]}]
-      (tracking-area nil
-       {:on-move (on-move config owner)
-        :on-exit (on-exit config owner)
-        :on-click (on-click config owner)
-        :underlap-x 40
-        :track-border-only? track-border-only?
-        :determine-width-from-contents? true}
-       (dom/div #js {:style #js {:position "relative"
-                                 :zIndex 1
-                                 :height 0}}
 
-                (dom/div #js {:style
-                              #js {:display (if (nil? lens-top)
-                                              "none" "block")
+      (let [row-inspect (om/observe owner (state/row-inspect k))]
+        (tracking-area nil
+                       {:on-move (on-move row-inspect owner)
+                        :on-exit (on-exit row-inspect owner)
+                        :on-click (on-click row-inspect owner)
+                        :underlap-x 40
+                        :track-border-only? track-border-only?
+                        :determine-width-from-contents? true}
+                       (dom/div #js {:style #js {:position "relative"
+                                                 :zIndex 1
+                                                 :height 0}}
 
-                                   :top (- lens-top (quot lens-h 2))
-                                   :height lens-h
+                                (dom/div #js {:style
+                                              #js {:display (if (nil? lens-top)
+                                                              "none" "block")
 
-                                   ;; Fill the positioned container
-                                   :position "absolute"
-                                   :width "100%"
+                                                   :top (- lens-top (quot lens-h 2))
+                                                   :height lens-h
 
-                                   ;; Lengthen and center
-                                   :paddingLeft lens-overshot
-                                   :paddingRight lens-overshot
-                                   :left (- lens-overshot)}}
+                                                   ;; Fill the positioned container
+                                                   :position "absolute"
+                                                   :width "100%"
 
-                         (dom/div #js {:style
-                                       #js {:position "absolute"
-                                            :width lens-overshot
-                                            :height lens-h
-                                            :backgroundColor "red"
-                                            :left 0}})
-                         (when is-tracking?
-                           (dom/div #js {:style
-                                         #js {:position "absolute"
-                                              :left lens-overshot
-                                              :right lens-overshot
-                                              :height 1
-                                              :borderTop "1px solid red"
-                                              :borderBottom "1px solid red"}}))
-                         (dom/div #js {:style
-                                       #js {:position "absolute"
-                                            :width lens-overshot
-                                            :height lens-h
-                                            :backgroundColor "red"
-                                            :right 0}})))
-       (dom/div #js {:ref "content"
-                     :style #js {:position "relative"
-                                 :zIndex 0}} content)))))
+                                                   ;; Lengthen and center
+                                                   :paddingLeft lens-overshot
+                                                   :paddingRight lens-overshot
+                                                   :left (- lens-overshot)}}
 
-(defn row-probe [target schema {:keys [track-border-only?]} content]
-  (om/build row-probe-component {:target target :schema schema}
+                                         (dom/div #js {:style
+                                                       #js {:position "absolute"
+                                                            :width lens-overshot
+                                                            :height lens-h
+                                                            :backgroundColor "red"
+                                                            :left 0}})
+                                         (when is-tracking?
+                                           (dom/div #js {:style
+                                                         #js {:position "absolute"
+                                                              :left lens-overshot
+                                                              :right lens-overshot
+                                                              :height 1
+                                                              :borderTop "1px solid red"
+                                                              :borderBottom "1px solid red"}}))
+                                         (dom/div #js {:style
+                                                       #js {:position "absolute"
+                                                            :width lens-overshot
+                                                            :height lens-h
+                                                            :backgroundColor "red"
+                                                            :right 0}})))
+                       (dom/div #js {:ref "content"
+                                     :style #js {:position "relative"
+                                                 :zIndex 0}} content))))))
+
+(defn row-probe [k schema {:keys [track-border-only?]} content]
+  (om/build row-probe-component k
             {:init-state {:track-border-only? track-border-only?}
-             :state {:content content}}))
+             :state {:content content
+                     :schema schema}}))

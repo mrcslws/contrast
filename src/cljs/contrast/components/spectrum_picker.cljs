@@ -174,7 +174,7 @@
 
 (def canvash 30)
 
-(defn spectrum-picker-component [data owner {:keys [inspector]}]
+(defn spectrum-picker-component [figure owner {:keys [inspector]}]
   (reify
     om/IDisplayName
     (display-name [_]
@@ -196,8 +196,7 @@
 
     om/IRenderState
     (render-state [_ {:keys [width knob-actions dragging]}]
-
-      (let [spectrum (-> data :graphic :spectrum)]
+      (let [spectrum (-> figure :spectrum)]
         (dom/div #js {:style #js {:position "relative"
                                   :width width
                                   :marginRight 12
@@ -269,12 +268,7 @@
                                                        ;; col -> [-1 1]
                                                        #(dec (* 2 (/ % width)))))
                                                      ch))))
-
-                                     ;; TODO - is it possible to cleverly use ref-cursors
-                                     ;; to get away from this canary approach? The only
-                                     ;; reason this takes the entire `data` is because
-                                     ;; it needs to invalidate the `selected-color`.
-                                     data
+                                     figure
 
                                      ;; TODO - it's annoying when you're dragging
                                      ;; and you hover over the image.

@@ -50,10 +50,14 @@
     (if (and within-ta?
              (not (and (om/get-state owner :track-border-only?)
                        within-content?)))
-      (when-let [on-move (om/get-state owner :on-move)]
-        (on-move x y))
-      (when-let [on-exit (om/get-state owner :on-exit)]
-        (on-exit x y)))))
+      (do
+        (om/set-state-nr! owner :entered? true)
+        (when-let [on-move (om/get-state owner :on-move)]
+         (on-move x y)))
+      (when (om/get-state owner :entered?)
+        (om/set-state-nr! owner :entered? false)
+        (when-let [on-exit (om/get-state owner :on-exit)]
+          (on-exit x y))))))
 
 (defn click-handler [evt owner]
   (move-handler evt owner)

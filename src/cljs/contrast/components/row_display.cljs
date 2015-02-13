@@ -3,12 +3,12 @@
             [om.dom :as dom :include-macros true]
             [contrast.common :refer [trace-rets]]
             [contrast.components.canvas :as cnv]
-            [contrast.pixel :as pixel]))
+            [contrast.pixel :as pixel]
+            [contrast.state :as state]))
 
-(defn idwriter [data owner]
+(defn idwriter [row-inspect stalkee]
   (fn [imagedata]
-    (let [{row-inspect :row-inspect graphic :graphic stalkee :imagedata} data
-          sr (:probed-row row-inspect)]
+    (let [sr (:probed-row row-inspect)]
       (when (and sr stalkee)
         (let [width (.-width imagedata)
               height (.-height imagedata)
@@ -28,24 +28,24 @@
 
 ;; TODO display a red border when the illusion's tracking area is tracking.
 ;; This will involve channels.
-(defn row-display-component [data owner {:keys [subscriber]}]
+(defn row-display-component [k owner {:keys [subscriber]}]
   (reify
     om/IDisplayName
     (display-name [_]
       "row-display")
 
-    om/IRender
-    (render [_]
-      (dom/div {:onMouseMove #(om/set-state! owner :force-update 1)}
-               (cnv/canvas data (-> data :graphic :width) 40
-                           (cnv/idwriter->painter (trace-rets (idwriter data owner)
-                                                              subscriber)))))))
+    om/IRenderState
+    (render-state [_ {:keys [stalkee]}]
+      (let [row-inspect (om/observe owner (state/row-inspect k))
+            figure (om/observe owner (state/figure k))]
+        (dom/div {:onMouseMove #(om/set-state! owner :force-update 1)}
+                 (cnv/canvas [row-inspect figure stalkee] (:width figure) 40
+                             (cnv/idwriter->painter (trace-rets (idwriter row-inspect stalkee)
+                                                                subscriber))))))))
 
 (defn row-display
-  ([data imagedata]
-     (row-display data imagedata nil))
-  ([data imagedata subscriber]
-     (om/build row-display-component
-               (assoc data
-                 :imagedata imagedata)
-               {:opts {:subscriber subscriber}})))
+  ([k stalkee]
+     (row-display k stalkee nil))
+  ([k stalkee subscriber]
+     (om/build row-display-component k {:state {:stalkee stalkee}
+                                        :opts {:subscriber subscriber}})))

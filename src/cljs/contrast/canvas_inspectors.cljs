@@ -8,6 +8,7 @@
             [contrast.components.eyedropper-zone :as eyedropper-zone]
             [contrast.components.chan-handlers :refer [chan-genrender]]))
 
+;; TODO with ref-cursors I think I can remove the canary.
 (defn inspected [awaiting-chan canary inspector]
   (chan-genrender (fn [channel imgdata]
                     (cond-> (awaiting-chan channel)
@@ -41,19 +42,19 @@
 ;;   ReactElement, ReactElement internals -> ReactElement
 ;; so the second arg isn't so much of an input as it is part of the first arg.
 
-(defn color-exposer [data]
+(defn color-exposer [k]
   (fn [r imgdata]
-    (color-exposer/color-exposer data imgdata r)))
+    (color-exposer/color-exposer k imgdata r)))
 
-(defn eyedropper-zone [data]
+(defn eyedropper-zone [k]
   (fn [r imgdata]
-    (eyedropper-zone/eyedropper-zone (:color-inspect data) {:key :selected-color} imgdata r)))
+    (eyedropper-zone/eyedropper-zone k {:key :selected-color} imgdata r)))
 
-(defn row-probe [data]
+(defn row-probe [k]
   (fn [r _]
-    (row-probe/row-probe (:row-inspect data) {:key :probed-row} {:track-border-only? true} r)))
+    (row-probe/row-probe k {:key :probed-row} {:track-border-only? true} r)))
 
-(defn row-display [data]
+(defn row-display [k]
   (fn [r imgdata]
     (dom/div nil
              r
@@ -64,9 +65,7 @@
                                        :left -3
                                        :borderLeft "3px solid red"
                                        :borderRight "3px solid red"}}
-                      (inspected (partial row-display/row-display
-                                          (select-keys data [:graphic :row-inspect])
-                                          imgdata)
-                                 data
-                                 (comp (eyedropper-zone data)
-                                       (color-exposer data)))))))
+                      (inspected (partial row-display/row-display k imgdata)
+                                 [k imgdata]
+                                 (comp (eyedropper-zone k)
+                                       (color-exposer k)))))))

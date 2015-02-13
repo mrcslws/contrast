@@ -3,35 +3,38 @@
             [om.dom :as dom :include-macros true]
             [contrast.components.canvas :as cnv]
             [contrast.components.tracking-area :refer [tracking-area]]
-            [contrast.pixel :as pixel]))
+            [contrast.pixel :as pixel]
+            [contrast.state :as state]))
 
-(defn set-color! [{:keys [target schema]} color]
-  (om/update! target (:key schema) color))
+(defn set-color! [color-inspect color owner]
+  (om/update! color-inspect (:key (om/get-state owner :schema)) color))
 
-(defn on-move [config owner]
+(defn on-move [color-inspect owner]
   (fn [content-x content-y]
-    (when-let [imagedata (:imagedata config)]
-      (set-color! config (pixel/get imagedata content-x content-y)))))
+    (when-let [imagedata (om/get-state owner :imagedata)]
+      (set-color! color-inspect (pixel/get imagedata content-x content-y) owner))))
 
-(defn on-exit [config owner]
+(defn on-exit [color-inspect owner]
   (fn [_ _]
-    (set-color! config nil)))
+    (set-color! color-inspect nil owner)))
 
-(defn eyedropper-zone-component [config owner {:keys [updates]}]
+(defn eyedropper-zone-component [k owner {:keys [updates]}]
   (reify
     om/IDisplayName
     (display-name [_]
       "eyedropper-zone")
 
     om/IRenderState
-    (render-state [_ {:keys [content]}]
-      (apply tracking-area nil
-             {:on-move (on-move config owner)
-              :on-exit (on-exit config owner)
-              :determine-width-from-contents? true}
-             content))))
+    (render-state [_ {:keys [content schema imagedata]}]
+      (let [color-inspect (state/color-inspect k)]
+       (apply tracking-area nil
+              {:on-move (on-move color-inspect owner)
+               :on-exit (on-exit color-inspect owner)
+               :determine-width-from-contents? true}
+              content)))))
 
-(defn eyedropper-zone [target schema imagedata & content]
-  (om/build eyedropper-zone-component
-            {:target target :schema schema :imagedata imagedata}
-            {:state {:content content}}))
+(defn eyedropper-zone [k schema imagedata & content]
+  (om/build eyedropper-zone-component k
+            {:state {:content content
+                     :schema schema
+                     :imagedata imagedata}}))
