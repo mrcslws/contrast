@@ -8,8 +8,8 @@
 
 (figwheel/watch-and-reload
   :websocket-url "ws://localhost:3449/figwheel-ws"
-  :jsload-callback page-triggers/render)
+  :jsload-callback page-triggers/reload-code)
 
 (weasel/connect "ws://localhost:9001" :verbose true :print #{:repl :console})
 
-(page-triggers/render)
+(page-triggers/reload-code)

@@ -1,6 +1,7 @@
 target
 out
 docs
+figwheel_server.log
 ./*app.js
 
 .*

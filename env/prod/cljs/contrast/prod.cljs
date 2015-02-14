@@ -1,4 +1,4 @@
 (ns contrast.prod
-  (:require [contrast.core :as core]))
+  (:require [contrast.page-triggers :as page-triggers]))
 
-(core/main)
+(page-triggers/reload-code)

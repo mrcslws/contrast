@@ -1,8 +1,8 @@
 (ns contrast.page-triggers
   (:require [cljs.core.async :refer [put! chan mult]]))
 
-(defonce ^:private renders-in (chan))
-(defonce renders (mult renders-in))
+(defonce ^:private reloads-in (chan))
+(defonce code-reloads (mult reloads-in))
 
-(defn render []
-  (put! renders-in :render))
+(defn reload-code []
+  (put! reloads-in :reload-code))

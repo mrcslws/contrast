@@ -10,13 +10,17 @@
             [environ.core :refer [env]]
             [ring.adapter.jetty :refer [run-jetty]]))
 
-(deftemplate page
+(deftemplate main-page
   (io/resource "index.html") [] [:body] (if is-dev? inject-devmode-html identity))
+
+(deftemplate sandbox-page
+  (io/resource "sandbox.html") [] [:body] (if is-dev? inject-devmode-html identity))
 
 (defroutes routes
   (resources "/")
   (resources "/react" {:root "react"})
-  (GET "/*" req (page)))
+  (GET "/sandbox" req (sandbox-page))
+  (GET "/*" req (main-page)))
 
 (def http-handler
   (if is-dev?

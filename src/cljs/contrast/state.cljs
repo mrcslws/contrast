@@ -4,6 +4,11 @@
 (defonce app-state
   (atom {}))
 
+;; Instrumentation lives in a different world.
+;; We don't want our components becoming self-referential.
+(defonce component-stats
+  (atom {}))
+
 (defn ensure-path! [a ks]
   (when-not (get-in @a ks)
     (swap! a assoc-in ks {})))

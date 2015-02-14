@@ -9,21 +9,23 @@
   :test-paths ["spec/clj"]
 
   :dependencies [[org.clojure/clojure "1.6.0"]
-                 [org.clojure/clojurescript "0.0-2511" :scope "provided"]
+                 [org.clojure/clojurescript "0.0-2760" :scope "provided"]
                  [org.clojure/core.async "0.1.346.0-17112a-alpha"]
                  [ring "1.3.2"]
                  [ring/ring-defaults "0.1.2"]
                  [compojure "1.3.1"]
                  [enlive "1.1.5"]
-                 [om "0.8.0-rc1"]
+                 [org.omcljs/om "0.8.8"]
                  [environ "1.0.0"]]
 
-  :plugins [[lein-cljsbuild "1.0.3"]
+  :plugins [[lein-cljsbuild "1.0.4"]
             [lein-environ "1.0.0"]]
 
   :min-lein-version "2.5.0"
 
   :uberjar-name "contrast.jar"
+
+  :clean-targets ^{:protect false} ["resources/public/js/out"]
 
   :cljsbuild {:builds {:app {:source-paths ["src/cljs"]
                              :compiler {:output-to "resources/public/js/app.js"
@@ -36,16 +38,16 @@
 
   :profiles {:dev {:source-paths ["env/dev/clj"]
 
-                   :dependencies [[figwheel "0.1.6-SNAPSHOT"]
-                                  [com.cemerick/piggieback "0.1.3"]
-                                  [weasel "0.4.2"]
+                   :dependencies [[figwheel "0.2.3-SNAPSHOT"]
+                                  [com.cemerick/piggieback "0.1.5"]
+                                  [weasel "0.5.0"]
                                   [leiningen "2.5.0"]]
 
                    :repl-options {:init-ns contrast.server
                                   :nrepl-middleware
                                   [cemerick.piggieback/wrap-cljs-repl]}
 
-                   :plugins [[lein-figwheel "0.1.6-SNAPSHOT"]]
+                   :plugins [[lein-figwheel "0.2.3-SNAPSHOT"]]
 
                    :figwheel {:http-server-root "public"
                               :server-port 3449
