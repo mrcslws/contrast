@@ -7,7 +7,9 @@
             [contrast.components.slider :refer [slider]]
             [contrast.hotkeys :as hotkeys]
             [contrast.illusions :as illusions]
+            [contrast.instrumentation :as instrumentation]
             [contrast.state :as state]
+            [contrast.components.fixed-table :refer [fixed-table-component]]
             [contrast.components.numvec-editable :refer [numvec-editable]]
             [contrast.components.spectrum-picker :refer [spectrum-picker]]
             [contrast.components.state-display :refer [state-display-component]]
@@ -215,17 +217,30 @@
     (render [_])))
 
 (defn install-root [r]
-  (let [[element-id [ff v]] r
-        el (js/document.getElementById element-id)]
-    (om/root (ff) v {:target el})))
+  (let [[element-id [ff v rootm never-instrument?]] r
+        el (js/document.getElementById element-id)
+        methods (cond-> om/pure-methods
+                        (and (not never-instrument?)
+                             (:instrument? @state/app-state))
+                        (instrumentation/instrument-methods state/component-data))
+        descriptor (om/specify-state-methods! (clj->js methods))]
+    (om/root (ff) v
+             (assoc rootm
+               :target el
+               :descriptor descriptor))))
 
-(defn inject-root-element [id ff v]
-  (let [el (js/document.createElement "div")
-        r [id [ff v]]]
-    (.setAttribute el "id" id)
-    (.appendChild js/document.body el)
-    (swap! roots conj r)
-    (install-root r)))
+(defn inject-root-element
+  ([id ff v]
+     (inject-root-element id ff v nil))
+  ([id ff v rootm]
+     (inject-root-element id ff v rootm false))
+  ([id ff v rootm never-instrument?]
+     (let [el (js/document.createElement "div")
+           r [id [ff v rootm never-instrument?]]]
+       (.setAttribute el "id" id)
+       (.appendChild js/document.body el)
+       (swap! roots conj r)
+       (install-root r))))
 
 (defn remove-root-element [id]
   (let [el (js/document.getElementById id)]
@@ -242,17 +257,33 @@
                             @roots)]
     (mapv install-root ordered-roots))
 
-  (hotkeys/assoc-global {:modifiers [:ctrl]
-                         :char "j"}
-                        (fn []
-                          (if (-> state/app-state
-                                  (swap! update-in [:hood-open?] not)
-                                  :hood-open?)
-                            (inject-root-element "app-state"
-                                                 (fn []
-                                                   state-display-component)
-                                                 state/app-state)
-                            (remove-root-element "app-state")))))
+  (doseq [[m f] {{:modifiers [:ctrl]
+                  :char "j"}
+                 (fn []
+                   (if (-> state/app-state
+                           (swap! update-in [:hood-open?] not)
+                           :hood-open?)
+                     (inject-root-element "app-state"
+                                          (fn []
+                                            state-display-component)
+                                          state/app-state)
+                     (remove-root-element "app-state")))
+                 {:modifiers [:ctrl]
+                  :char "k"}
+                 (fn []
+                   (if (-> state/app-state
+                           (swap! update-in [:instrument?] not)
+                           :instrument?)
+                     (inject-root-element "component-stats"
+                                          (fn []
+                                            fixed-table-component)
+                                          state/component-data
+                                          {:opts {:extract-table
+                                                  instrumentation/updates-table}}
+                                          true)
+                     (remove-root-element "component-stats"))
+                   (page-triggers/reload-code))}]
+    (hotkeys/assoc-global m f)))
 
 (defonce renderqueue-workaround
   (let [el (js/document.createElement "div")]

@@ -33,10 +33,10 @@
          {:foo false}))
 
 (defonce render-listen
-  (let [renders (chan)]
-    (tap page-triggers/renders renders)
+  (let [reloads (chan)]
+    (tap page-triggers/code-reloads reloads)
     (go-loop []
-      (<! renders)
+      (<! reloads)
       (render)
       (recur))
     :listening))

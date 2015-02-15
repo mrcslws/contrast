@@ -28,11 +28,11 @@
 (defn ^:private ensure-listening []
   (when-not @global-keydowns-listening?
     (let [eventkey (events/listen js/document.body "keydown" on-keydown-global)
-          reloads (chan)]
+          before-reload (chan)]
       (reset! global-keydowns-listening? true)
-      (tap page-triggers/code-reloads reloads)
+      (tap page-triggers/before-code-reload before-reload)
       (go
-        (<! reloads)
+        (<! before-reload)
 
         ;; Design decision: use the already-loaded code to clean up.
         ;; Not the newly-loaded code.

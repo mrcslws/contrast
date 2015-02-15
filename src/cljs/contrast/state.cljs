@@ -6,7 +6,7 @@
 
 ;; Instrumentation lives in a different world.
 ;; We don't want our components becoming self-referential.
-(defonce component-stats
+(defonce component-data
   (atom {}))
 
 (defn ensure-path! [a ks]
