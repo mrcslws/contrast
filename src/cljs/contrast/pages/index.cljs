@@ -217,7 +217,7 @@
     (render [_])))
 
 (defn install-root [r]
-  (let [[element-id [ff v rootm never-instrument?]] r
+  (let [[element-id [ff v frootm never-instrument?]] r
         el (js/document.getElementById element-id)
         methods (cond-> om/pure-methods
                         (and (not never-instrument?)
@@ -225,18 +225,18 @@
                         (instrumentation/instrument-methods state/component-data))
         descriptor (om/specify-state-methods! (clj->js methods))]
     (om/root (ff) v
-             (assoc rootm
+             (assoc (when frootm (frootm))
                :target el
                :descriptor descriptor))))
 
 (defn inject-root-element
   ([id ff v]
      (inject-root-element id ff v nil))
-  ([id ff v rootm]
-     (inject-root-element id ff v rootm false))
-  ([id ff v rootm never-instrument?]
+  ([id ff v frootm]
+     (inject-root-element id ff v frootm false))
+  ([id ff v frootm never-instrument?]
      (let [el (js/document.createElement "div")
-           r [id [ff v rootm never-instrument?]]]
+           r [id [ff v frootm never-instrument?]]]
        (.setAttribute el "id" id)
        (.appendChild js/document.body el)
        (swap! roots conj r)
@@ -278,8 +278,9 @@
                                           (fn []
                                             fixed-table-component)
                                           state/component-data
-                                          {:opts {:extract-table
-                                                  instrumentation/updates-table}}
+                                          (fn []
+                                            {:opts {:extract-table
+                                                    instrumentation/aggregate-update-times}})
                                           true)
                      (remove-root-element "component-stats"))
                    (page-triggers/reload-code))}]
