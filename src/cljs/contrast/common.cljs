@@ -1,8 +1,8 @@
 (ns contrast.common
-  (:require [om.core :as om :include-macros true]
-            [om.dom :as dom :include-macros true]
+  (:require [cljs.core.async :refer [put!]]
             [contrast.dom :as domh]
-            [cljs.core.async :refer [put!]]))
+            [om.dom :as dom :include-macros true]
+            [om.core :as om :include-macros true]))
 
 ;; Common components
 
@@ -114,9 +114,30 @@
       (+ start)
       js/Math.round))
 
+
+
 (defn trace-rets [f ch]
-  (fn [& args]
-    (let [r (apply f args)]
-      (when ch
-        (put! ch r))
-      r)))
+  (fn
+    ([]
+       (let [r (f)]
+         (when ch
+           (put! ch r))
+         r))
+    ([a1]
+       (let [r (f a1)]
+         (when ch
+           (put! ch r))
+         r))
+    ([a1 a2]
+       (let [r (f a1 a2)]
+         (when ch
+           (put! ch r))
+         r))
+    ([a1 a2 & args]
+       (let [r (apply f a1 a2 args)]
+         (when ch
+           (put! ch r))
+         r))))
+
+(defn display-name [c]
+  ((aget c "getDisplayName")))

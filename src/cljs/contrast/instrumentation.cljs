@@ -1,11 +1,13 @@
 (ns contrast.instrumentation
-  (:require [om.core :as om :include-macros true]))
+  (:require [contrast.common :refer [display-name]]
+            [om.core :as om :include-macros true]))
 
 (defn uncursor [v]
   (cond-> v
           (om/cursor? v)
           om/value))
 
+;; TODO I'm seeing wrongly-paired updates. I saw an update with duration 1922130.0ms.
 (defn updates [events]
   (->> events
        (filter (fn [[name _ _]]
@@ -112,9 +114,6 @@
     (assert id)
     (assert depth)
     [id depth]))
-
-(defn display-name [c]
-  ((aget c "getDisplayName")))
 
 (defn log-times [data event-name this f]
   (let [start (js/Date.)

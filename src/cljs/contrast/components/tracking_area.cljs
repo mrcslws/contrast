@@ -1,7 +1,9 @@
 (ns contrast.components.tracking-area
-  (:require [om.core :as om :include-macros true]
-            [om.dom :as dom :include-macros true]
-            [contrast.dom :as domh]))
+  (:require [cljs.core.async :refer [put! chan mult tap close! <!]]
+            [com.mrcslws.om-spec :as spec]
+            [contrast.dom :as domh]
+            [om.core :as om :include-macros true]
+            [om.dom :as dom :include-macros true]))
 
 ;; pnpoly - http://www.ecse.rpi.edu/Homepages/wrf/Research/Short_Notes/pnpoly.html
 ;; Note that points must be ordered! Clockwise or counterclockwise, doesn't matter.
@@ -52,19 +54,21 @@
                        within-content?)))
       (do
         (om/set-state-nr! owner :entered? true)
-        (when-let [on-move (om/get-state owner :on-move)]
-         (on-move x y)))
+        (when-let [moves (om/get-state owner :moves)]
+          (put! moves [x y])))
       (when (om/get-state owner :entered?)
         (om/set-state-nr! owner :entered? false)
-        (when-let [on-exit (om/get-state owner :on-exit)]
-          (on-exit x y))))))
+        (when-let [exits (om/get-state owner :exits)]
+          (put! exits [x y])))))
+  nil)
 
 (defn click-handler [evt owner]
   (move-handler evt owner)
-  (when-let [on-click (om/get-state owner :on-click)]
+  (when-let [clicks (om/get-state owner :clicks)]
     ;; The `on-click` should not care about the [x y].
     ;; Handle that in the `on-move`.
-    (on-click)))
+    (put! clicks :click))
+  nil)
 
 (defn reference-point [ref style]
   (dom/div #js {:ref ref
@@ -80,7 +84,7 @@
       "tracking-area")
 
     om/IRenderState
-    (render-state [_ {:keys [content underlap-x underlap-y on-click
+    (render-state [_ {:keys [underlap-x underlap-y clicks
                              determine-width-from-contents?]}]
       (dom/div #js {:ref "tracking-area"
                     :className "TrackingArea"
@@ -98,7 +102,7 @@
                                 ;; TODO explain and test
                                 :verticalAlign "top"
 
-                                :cursor (if on-click "pointer" "auto")
+                                :cursor (if clicks "pointer" "auto")
 
                                 ;; Include child element margins.
                                 ;; Otherwise they won't be included in cases
@@ -120,21 +124,14 @@
                (reference-point "tne" {:right 0 :top 0})
                (reference-point "tsw" {:left 0 :bottom 0})
                (reference-point "tse" {:right 0 :bottom 0})
-               (apply dom/div
-                      #js {:ref "content-container"
-                           :className "ContentContainer"
-                           :style #js {;; Positioned from start of content,
-                                       ;; rather than start of tracking area,
-                                       ;; which is shifted due to padding.
-                                       :position "relative"}}
-                      (reference-point "nw" {:left 0 :top 0})
-                      (reference-point "ne" {:right 0 :top 0})
-                      (reference-point "sw" {:left 0 :bottom 0})
-                      (reference-point "se" {:right 0 :bottom 0})
-                      content)))))
-
-(defn tracking-area [style config & content]
-  (dom/div #js {:style (clj->js style)}
-           (om/build tracking-area-component nil
-                     {:state (assoc config
-                               :content content)})))
+               (dom/div #js {:ref "content-container"
+                             :className "ContentContainer"
+                             :style #js {;; Positioned from start of content,
+                                         ;; rather than start of tracking area,
+                                         ;; which is shifted due to padding.
+                                         :position "relative"}}
+                        (reference-point "nw" {:left 0 :top 0})
+                        (reference-point "ne" {:right 0 :top 0})
+                        (reference-point "sw" {:left 0 :bottom 0})
+                        (reference-point "se" {:right 0 :bottom 0})
+                        (spec/children-in-div owner))))))

@@ -1,24 +1,28 @@
 (ns contrast.pages.index
-  (:require [om.core :as om :include-macros true]
-            [om.dom :as dom :include-macros true]
-            [contrast.page-triggers :as page-triggers]
+  (:require [cljs.core.async :refer [put! chan mult tap close! <!]]
+            [com.mrcslws.om-spec :as spec]
             [contrast.common :refer [trace-rets]]
-            [contrast.components.canvas :as cnv]
+            [contrast.components.canvas :as cnv :refer [canvas-component]]
+            [contrast.components.chan-handlers :refer [chan-genrender]]
+            [contrast.components.color-exposer :refer [color-exposer-component]]
+            [contrast.components.color-picker :refer [color-picker-component]]
+            [contrast.components.eyedropper-zone :refer [eyedropper-zone-spec]]
+            [contrast.components.fixed-table :refer [fixed-table-component]]
+            [contrast.components.numvec-editable :refer [numvec-editable]]
+            [contrast.components.row-display :refer [row-display-component]]
+            [contrast.components.row-probe :refer [row-probe-spec]]
             [contrast.components.slider :refer [slider]]
+            [contrast.components.spectrum-picker :refer [spectrum-picker-spec]]
+            [contrast.components.state-display :refer [state-display-component]]
+            [contrast.components.wave-display :refer [wave-display-component]]
+            [contrast.components.wave-picker :refer [wave-picker-component]]
             [contrast.hotkeys :as hotkeys]
             [contrast.illusions :as illusions]
             [contrast.instrumentation :as instrumentation]
+            [contrast.page-triggers :as page-triggers]
             [contrast.state :as state]
-            [contrast.components.fixed-table :refer [fixed-table-component]]
-            [contrast.components.numvec-editable :refer [numvec-editable]]
-            [contrast.components.spectrum-picker :refer [spectrum-picker]]
-            [contrast.components.state-display :refer [state-display-component]]
-            [contrast.components.wave-picker :refer [wave-picker-component]]
-            [contrast.components.wave-display :refer [wave-display-component]]
-            [contrast.components.color-picker :refer [color-picker-component]]
-            [contrast.components.chan-handlers :refer [chan-genrender]]
-            [contrast.canvas-inspectors :as inspectors :refer [inspected]]
-            [cljs.core.async :refer [put! chan mult tap close! <!]])
+            [om.dom :as dom :include-macros true]
+            [om.core :as om :include-macros true])
   (:require-macros [cljs.core.async.macros :refer [go-loop]]))
 
 ;; TODO switch away from "radius". "width" or "diameter" are better.
@@ -31,16 +35,18 @@
   (dom/div #js {:style #js {:display "inline-block"
                             :marginLeft 24
                             :verticalAlign "top"}}
-           (apply dom/div #js {:style
-                               #js {:backgroundColor "#f2f2f2"
-                                    :background "linear-gradient(#FFFFFF 0%, #f2f2f2 100%)"
-                                    :border "1px solid #e2e2e2"
-                                    :paddingTop 8
-                                    :paddingBottom 8
-                                    :paddingLeft 14
-                                    :borderRadius 5
-                                    :font "12px/1.4 Helvetica, Arial, sans-serif"}}
-                  els)))
+           (apply
+            dom/div
+            #js {:style
+                 #js {:backgroundColor "#f2f2f2"
+                      :background "linear-gradient(#FFFFFF 0%, #f2f2f2 100%)"
+                      :border "1px solid #e2e2e2"
+                      :paddingTop 8
+                      :paddingBottom 8
+                      :paddingLeft 14
+                      :borderRadius 5
+                      :font "12px/1.4 Helvetica, Arial, sans-serif"}}
+            els)))
 
 (defn section [& els]
   (apply dom/div #js {:style #js {:marginBottom 12}}
@@ -60,6 +66,62 @@
                                   :marginBottom 6}}
          els))
 
+(defn probed-illusion [k figure idwriter include-row-probe?]
+  (let [canary [k figure]
+        {:keys [width height]} figure]
+   (illusion
+    (chan-genrender
+     (fn [channel imgdata]
+       (dom/div
+        nil
+        (spec/render
+         (let [base (->> {:f canvas-component
+                          :props canary
+                          :m {:state {:width width :height height}
+                              :opts {:paint
+                                     (cnv/idwriter->painter
+                                      (trace-rets idwriter channel))}}}
+
+                         vector
+                         (assoc {:f color-exposer-component
+                                 :props k
+                                 :m {:state {:imagedata imgdata}}}
+                           :children)
+
+                         vector
+                         (eyedropper-zone-spec k {:key :selected-color}
+                                               imgdata))]
+           (if include-row-probe?
+             (row-probe-spec k {:key :probed-row} true
+                             [base])
+             base)))
+        (when include-row-probe?
+          (dom/div
+           #js {:style #js {:marginTop 20
+                            :position "relative"
+                            :left -3
+                            :borderLeft "3px solid red"
+                            :borderRight "3px solid red"}}
+           (chan-genrender
+            (fn [channel row-display-imgdata]
+              (spec/render
+               (->> {:f row-display-component
+                     :props k
+                     :m {:state {:stalkee imgdata}
+                         :opts {:subscriber channel}}}
+
+                    vector
+                    (assoc {:f color-exposer-component
+                            :props k
+                            :m {:state {:imagedata row-display-imgdata}}}
+                      :children)
+
+                    vector
+                    (eyedropper-zone-spec
+                     k {:key :selected-color} row-display-imgdata))))
+            imgdata)))))
+     canary))))
+
 (defn single-gradient [k owner]
   (reify
     om/IDisplayName
@@ -68,42 +130,38 @@
 
     om/IRender
     (render [_]
-      (let [figure (om/observe owner (state/figure k))
-            {:keys [width height]} figure]
-        (dom/div nil
-                 (illusion (inspected #(cnv/canvas figure
-                                                   width height
-                                                   (cnv/idwriter->painter
-                                                    (trace-rets
-                                                     (illusions/single-sinusoidal-gradient-idwriter figure)
-                                                     %)))
-                                      [figure k]
-                                      (inspectors/comp (inspectors/row-display k)
-                                                       (inspectors/row-probe k)
-                                                       (inspectors/eyedropper-zone k)
-                                                       (inspectors/color-exposer k))))
-                 (algorithm (dom/div #js {:style #js {:width 280}} ;; TODO temporary hack.
-                                     (section (heading "Transition from:")
-                                              ;; TODO This isn't wired up to the illusion yet.
-                                              (indented (line (om/build color-picker-component
-                                                                        {:target (-> figure :spectrum :left)
-                                                                         :schema {:key :color}})
-                                                              " <-> "
-                                                              (om/build color-picker-component
-                                                                        {:target (-> figure :spectrum :right)
-                                                                         :schema {:key :color}}))))
-                                     (section (heading "over a distance of:")
-                                              (indented (line (:transition-radius figure) " pixels."
-                                                              (slider {:position "absolute"
-                                                                       :right 13
-                                                                       :top -20
-                                                                       :width 180}
-                                                                      figure
-                                                                      {:key :transition-radius
-                                                                       :min 0
-                                                                       :max 250
-                                                                       :str-format "%dpx"
-                                                                       :interval 1})))))))))))
+      (let [figure (om/observe owner (state/figure k))]
+        (dom/div
+         nil
+         (probed-illusion k figure
+                          (illusions/single-sinusoidal-gradient-idwriter figure)
+                          true)
+         (algorithm
+          (dom/div
+           #js {:style #js {:width 280}} ;; TODO temporary hack.
+           (section
+            (heading "Transition from:")
+            ;; TODO This isn't wired up to the illusion yet.
+            (indented (line (om/build color-picker-component
+                                      {:target (-> figure :spectrum :left)
+                                       :schema {:key :color}})
+                            " <-> "
+                            (om/build color-picker-component
+                                      {:target (-> figure :spectrum :right)
+                                       :schema {:key :color}}))))
+           (section
+            (heading "over a distance of:")
+            (indented (line (:transition-radius figure) " pixels."
+                            (slider {:position "absolute"
+                                     :right 13
+                                     :top -20
+                                     :width 180}
+                                    figure
+                                    {:key :transition-radius
+                                     :min 0
+                                     :max 250
+                                     :str-format "%dpx"
+                                     :interval 1})))))))))))
 
 (defn sweep-grating [k owner]
   (reify
@@ -113,29 +171,24 @@
 
     om/IRender
     (render [_]
-      (let [figure (om/observe owner (state/figure k))
-            {:keys [width height]} figure]
+      (let [figure (om/observe owner (state/figure k))]
         (dom/div nil
-                 (illusion (inspected #(cnv/canvas figure
-                                                   width height
-                                                   (cnv/idwriter->painter
-                                                    (trace-rets
-                                                     (illusions/sweep-grating-idwriter figure)
-                                                     %)))
-                                      [k figure]
-                                      (inspectors/comp (inspectors/row-display k)
-                                                       (inspectors/row-probe k)
-                                                       (inspectors/eyedropper-zone k)
-                                                       (inspectors/color-exposer k))))
-                 (algorithm (dom/div #js {:style #js {:width 170}} ;; TODO temporary hack.
-                                     (section (heading "Transition from:")
-                                              (indented (line (om/build color-picker-component
-                                                                        {:target (-> figure :spectrum :left)
-                                                                         :schema {:key :color}})
-                                                              " <-> "
-                                                              (om/build color-picker-component
-                                                                        {:target (-> figure :spectrum :right)
-                                                                         :schema {:key :color}})))))))))))
+                 (probed-illusion k figure
+                                  (illusions/sweep-grating-idwriter figure)
+                                  true)
+                 (algorithm
+                  (dom/div
+                   #js {:style #js {:width 170}} ;; TODO temporary hack.
+                   (section
+                    (heading "Transition from:")
+                    (indented (line
+                               (om/build color-picker-component
+                                         {:target (-> figure :spectrum :left)
+                                          :schema {:key :color}})
+                               " <-> "
+                               (om/build color-picker-component
+                                         {:target (-> figure :spectrum :right)
+                                          :schema {:key :color}})))))))))))
 
 
 (defn harmonic-grating [k owner]
@@ -146,62 +199,69 @@
 
     om/IRender
     (render [_]
-      (let [figure (om/observe owner (state/figure k))
-            {:keys [width height]} figure]
-        (dom/div nil
-                 (illusion (inspected
-                            #(cnv/canvas figure
-                                         width height
-                                         (cnv/idwriter->painter
-                                          (trace-rets
-                                           (illusions/harmonic-grating-idwriter figure)
-                                           %)))
-                            [k figure]
-                            (inspectors/comp (inspectors/eyedropper-zone k)
-                                             (inspectors/color-exposer k))))
-                 (algorithm (section (heading "For each n ∈ "
-                                              (numvec-editable {:width 300 :display "inline"}
-                                                               figure {:key :harmonics}))
+      (let [figure (om/observe owner (state/figure k))]
+        (dom/div
+         nil
+         (probed-illusion k figure
+                          (illusions/harmonic-grating-idwriter figure)
+                          false)
+         (algorithm
+          (section
+           (heading "For each n ∈ "
+                    (numvec-editable {:width 300 :display "inline"}
+                                     figure {:key :harmonics}))
 
-                                     (indented (line "Create a " (name (:wave figure)) " wave "
-                                                     (om/build wave-picker-component {:target figure
-                                                                                      :schema {:key :wave}
-                                                                                      :period (:period figure)}))
-                                               (line "with amplitude "
-                                                     (dom/input #js {:type "text" :value "1 / n"
-                                                                     :style #js {:width 30
-                                                                                 :textAlign "center"}}))
-                                               (line " and period "
-                                                     (dom/input #js {:type "text" :value "1 / n"
-                                                                     :style #js {:width 30
-                                                                                 :textAlign "center"}})
-                                                     " * " (:period figure) " pixels."
-                                                     (slider {:position "absolute"
-                                                              :right 13
-                                                              ;; TODO the slider is really bad.
-                                                              ;; This margin is needed for the animation to be seen.
-                                                              :top -15
-                                                              :width 180
-                                                              :display "inline-block"}
-                                                             figure
-                                                             {:key :period
-                                                              :min 1
-                                                              :max 5000
-                                                              :str-format "%dpx"
-                                                              :interval 1}))))
+           (indented
+            (line "Create a " (name (:wave figure)) " wave "
+                  (om/build wave-picker-component {:target figure
+                                                   :schema {:key :wave}
+                                                   :period (:period figure)}))
+            (line "with amplitude "
+                  (dom/input #js {:type "text" :value "1 / n"
+                                  :style #js {:width 30
+                                              :textAlign "center"}}))
+            (line " and period "
+                  (dom/input #js {:type "text" :value "1 / n"
+                                  :style #js {:width 30
+                                              :textAlign "center"}})
+                  " * " (:period figure) " pixels."
+                  (slider {:position "absolute"
+                           :right 13
+                           ;; TODO the slider is really bad.  This
+                           ;; margin is needed for the animation to be
+                           ;; seen.
+                           :top -15
+                           :width 180
+                           :display "inline-block"}
+                          figure
+                          {:key :period
+                           :min 1
+                           :max 5000
+                           :str-format "%dpx"
+                           :interval 1}))))
 
-                            (section (heading "Use the sum of these waves to choose the color:")
-                                     (indented (line (spectrum-picker figure 360
-                                                                      (inspectors/comp (inspectors/eyedropper-zone k)
-                                                                                       (inspectors/color-exposer k)))))))
-                 ;; (dom/div #js {:style #js {:marginTop 12
-                 ;;                           :paddingLeft 14}}
-                 ;;          (when-let [[r g b a]
-                 ;;                     (:selected-color data)]
-                 ;;            (str "Hovered color: rgba(" r "," g "," b "," a ")")))
+          (section
+           (heading "Use the sum of these waves to choose the color:")
+           (indented (line (spectrum-picker-spec
+                            figure 360
+                            (fn [spec imgdata]
+                              (eyedropper-zone-spec
+                               k {:key :selected-color} imgdata
+                               [{:f color-exposer-component
+                                 :props k
+                                 :m {:state {:imagedata imgdata}}
+                                 :children [spec]}])))))))
+         ;; (dom/div #js {:style #js {:marginTop 12
+         ;;                           :paddingLeft 14}}
+         ;;          (when-let [[r g b a]
+         ;;                     (:selected-color data)]
+         ;;            (str "Hovered color: rgba(" r "," g "," b "," a ")")))
 
-                 (dom/div #js {:style #js {:marginTop 12}}
-                          (om/build wave-display-component (select-keys figure [:width :wave :harmonics :period]))))))))
+         (dom/div #js {:style #js {:marginTop 12}}
+                  (om/build wave-display-component
+                            (select-keys figure
+                                         [:width :wave
+                                          :harmonics :period]))))))))
 
 
 
@@ -213,6 +273,10 @@
 
 (defn workaround-component [_ _]
   (reify
+    om/IDisplayName
+    (display-name [_]
+      "Om workaround dummy")
+
     om/IRender
     (render [_])))
 
@@ -283,7 +347,11 @@
                                                     instrumentation/aggregate-update-times}})
                                           true)
                      (remove-root-element "component-stats"))
-                   (page-triggers/reload-code))}]
+                   (page-triggers/reload-code))
+                 {:modifiers [:ctrl]
+                  :char "l"}
+                 (fn []
+                   (reset! state/component-data {}))}]
     (hotkeys/assoc-global m f)))
 
 (defonce renderqueue-workaround
@@ -295,9 +363,11 @@
   (swap! state/app-state merge
          {:hood-open? false
           :inspectors {:single-sinusoidal-gradient {:color-inspect {:selected-color nil}
-                                                    :row-inspect {:locked {:probed-row 30}}}
+                                                    :row-inspect {:is-tracking? false
+                                                                  :locked {:probed-row 30}}}
                        :sweep-grating {:color-inspect {:selected-color nil}
-                                       :row-inspect {:locked {:probed-row 30}}}
+                                       :row-inspect {:is-tracking? false
+                                                     :locked {:probed-row 30}}}
                        :harmonic-grating {:color-inspect {:selected-color nil}}}
           :figures {:single-sinusoidal-gradient {:width 500
                                                  :height 256

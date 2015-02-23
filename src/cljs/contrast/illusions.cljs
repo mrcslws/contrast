@@ -1,8 +1,8 @@
 (ns contrast.illusions
-  (:require [om.core :as om :include-macros true]
+  (:require [contrast.common :refer [wavefn spectrum-dictionary]]
             [contrast.components.canvas :as cnv]
             [contrast.pixel :as pixel]
-            [contrast.common :refer [wavefn spectrum-dictionary]])
+            [om.core :as om :include-macros true])
   (:require-macros [contrast.macros :refer [dorange]]))
 
 ;; TODO decomplect vertical `progress->color` from horizontal

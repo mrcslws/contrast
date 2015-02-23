@@ -1,10 +1,9 @@
 (ns contrast.components.wave-display
-  (:require [om.core :as om :include-macros true]
-            [om.dom :as dom :include-macros true]
+  (:require [contrast.common :refer [wavefn wavey->ycoord]]
             [contrast.components.canvas :as cnv]
             [contrast.pixel :as pixel]
-            [contrast.components.tracking-area :refer [tracking-area]]
-            [contrast.common :refer [wavefn wavey->ycoord]]))
+            [om.dom :as dom :include-macros true]
+            [om.core :as om :include-macros true]))
 
 (defn idwriter [config]
   (fn [imagedata]

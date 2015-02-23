@@ -1,0 +1,232 @@
+(ns contrast.components.row-probe
+  (:require [om.core :as om :include-macros true]
+            [om.dom :as dom :include-macros true]
+            [contrast.dom :as domh]
+            [contrast.components.tracking-area :refer [tracking-area
+                                                       tracking-area-component]]
+            [contrast.common :refer [wide-background-image]]
+            [contrast.state :as state]
+            [cljs.core.async :refer [put! chan mult tap close! <!]])
+  (:require-macros [cljs.core.async.macros :refer [go-loop]]))
+
+(def lens-overshot 5)
+(def lens-h 3)
+
+;; TODO - bug: when the row probe is not tracking, you can still hover
+;; over it, blocking you from hovering over the content.
+(defn on-move [row-inspect owner]
+  (fn [_ content-y]
+    (om/set-state! owner :is-tracking? true)
+    (let [schema (om/get-state owner :schema)
+          ch (.-offsetHeight (om/get-node owner "content"))]
+      (when (and (>= content-y 0)
+                 (< content-y ch))
+       (om/update! row-inspect (:key schema) content-y)
+       (om/set-state! owner :lens-top content-y)))))
+
+(defn on-move2 [row-inspect owner]
+  (fn [_ content-y]
+    (put! (om/get-state owner :tracking-status) true)
+    (let [schema (om/get-state owner :schema)
+          ch (.-offsetHeight (om/get-node owner "content"))]
+      (when (and (>= content-y 0)
+                 (< content-y ch))
+       (om/update! row-inspect (:key schema) content-y)
+       (om/set-state! owner :lens-top content-y)))))
+
+(defn revert-to-locked! [row-inspect owner]
+  (let [schema (om/get-state owner :schema)
+        v (get-in row-inspect [:locked (:key schema)])]
+    (om/update! row-inspect (:key schema) v)
+    (om/set-state! owner :lens-top v)))
+
+(defn on-exit [row-inspect owner]
+  (fn [_ _]
+    (om/set-state! owner :is-tracking? false)
+    (revert-to-locked! row-inspect owner)))
+
+(defn on-exit2 [row-inspect owner]
+  (fn [_ _]
+    (put! (om/get-state owner :tracking-status false))
+    (revert-to-locked! row-inspect owner)))
+
+(defn on-click [row-inspect owner]
+  (fn []
+    ;; TODO the locked value really needs to be indicated
+    (let [key (:key (om/get-state owner :schema))]
+        (om/update! (:locked row-inspect) key
+                 (get row-inspect key)))))
+
+(defn row-probe-ui-component [k owner]
+  (reify
+    om/IDisplayName
+    (display-name [_]
+      "row-probe-ui")
+
+    om/IWillMount
+    (will-mount [_]
+      (go-loop []
+        (om/set-state owner :is-tracking?
+                      (<! (om/get-state owner :tracking-starts-stops)))
+        (recur)))
+
+    om/IRenderState
+    (render-state [_ {:keys [content is-tracking?]}]
+      (dom/div nil
+               (dom/div #js {:style #js {:position "relative"
+                                         :zIndex 1
+                                         :height 0}}
+
+                        (dom/div #js {:style
+                                      #js {:display (if (nil? lens-top)
+                                                      "none" "block")
+
+                                           :top (- lens-top (quot lens-h 2))
+                                           :height lens-h
+
+                                           ;; Fill the positioned container
+                                           :position "absolute"
+                                           :width "100%"
+
+                                           ;; Lengthen and center
+                                           :paddingLeft lens-overshot
+                                           :paddingRight lens-overshot
+                                           :left (- lens-overshot)}}
+
+                                 (dom/div #js {:style
+                                               #js {:position "absolute"
+                                                    :width lens-overshot
+                                                    :height lens-h
+                                                    :backgroundColor "red"
+                                                    :left 0}})
+                                 (when is-tracking?
+                                   (dom/div #js {:style
+                                                 #js {:position "absolute"
+                                                      :left lens-overshot
+                                                      :right lens-overshot
+                                                      :height 1
+                                                      :borderTop "1px solid red"
+                                                      :borderBottom "1px solid red"}}))
+                                 (dom/div #js {:style
+                                               #js {:position "absolute"
+                                                    :width lens-overshot
+                                                    :height lens-h
+                                                    :backgroundColor "red"
+                                                    :right 0}})))
+               (dom/div #js {:ref "content"
+                             :style #js {:position "relative"
+                                         :zIndex 0}}
+                        content)))))
+
+(defn row-probe-component [k owner]
+  (reify
+    om/IDisplayName
+    (display-name [_]
+      "row-probe")
+
+    om/IInitState
+    (init-state [_]
+      {:lens-top nil
+       :track-border-only? false
+       :tracking-starts-stops (chan)})
+
+    om/IWillMount
+    (will-mount [_]
+      (revert-to-locked! (state/row-inspect k) owner))
+
+    om/IRenderState
+    (render-state [_ {:keys [content lens-top track-border-only?]}]
+
+      (let [row-inspect (om/observe owner (state/row-inspect k))]
+
+        ;; There's a strange complexity here.
+        ;; The tracking area does two things:
+        ;;  1. It contains content.
+        ;;  2. It handles mouse events.
+        ;; Because of 1, the tracking area must re-render whenever the content
+        ;; changes. Because the content is actually part of the tracking-area
+        ;; component.
+        ;;
+        ;; One way to solve this is to require `tracking-area` consumers to
+        ;; pass in an Om component, and letting that component take it from there.
+        ;;
+        ;; If I split the `tracking-area` in two, then I'd still have a container
+        ;; component which keeps rerendering. Not a deal-breaker.
+        ;;
+        ;; What if the `tracking-area` contained nothing?
+
+        ;; Solution:
+        ;; Tracking area can take a fn as content. When it sees a fn, it treats
+        ;; it as an Om component. It builds it. It picks up the props to send
+        ;; into build from state (or uses nil).
+
+        ;; Problem:
+        ;; The `tracking-area`'s parent assigns its event handlers.
+        ;; The 'tracking-area`'s child might want to respond to its event
+        ;; handlers.
+        ;;
+        ;; For example, when you hover over a thing, maybe you want UI to
+        ;; appear in its children. But this thing might be totally oblivious,
+        ;; not even re-rendering.
+        ;;
+        ;; This sounds like a job for channels.
+
+        ;; Problem:
+        ;; The `tracking-area`'s parent event handlers might make decisions
+        ;; based on the mounted content. For example, it chooses how to respond
+        ;; to a mouse-move event based on the height of the content. But if
+        ;; this content is now in a child component, then the event handlers
+        ;; can't reach it any longer.
+        ;;
+        ;; This sounds like a job for channels!
+        ;;
+        ;; Now the `tracking-area` is sending all of its output into its children.
+        ;; The only reason it needs a parent component is to handle chan creation.
+        ;; Otherwise a function would be sufficient.
+        ;;
+        ;; The `tracking-area` itself is a component because it has one bool in
+        ;; state (`entered?`) and because it uses `om/get-node` in a couple
+        ;; places.
+        ;;
+        ;; So I'm thinking each of these things -- the eyedropper zone, the row
+        ;; probe, the slider -- should use `chan-gen` + child components. The
+        ;; `tracking-area` will put all of its output directly on channels. No
+        ;; more callbacks.
+        ;;
+        ;; Concern:
+        ;; The direction I *was* going for the `row-probe` would have handled
+        ;; row entry in one component (the `tracking-area`'s parent) and row UI
+        ;; in another (the child component). It'd be like the eyedropper/exposer
+        ;; separation, where one of them doesn't even need to `om/observe` the
+        ;; value that it's changing.
+        ;;
+        ;; Answer:
+        ;; That's still doable. Of course it is. The child component would just
+        ;; have to have its own child.
+
+        (om/build tracking-area-component nil
+                  {:init-state {:on-move (on-move row-inspect owner)
+                                :on-exit (on-exit row-inspect owner)
+                                :on-click (on-click row-inspect owner)
+                                :underlap-x 40
+                                :track-border-only? track-border-only?
+                                :determine-width-from-contents? true
+                                :child-component :todo}
+                   :state {:child-props k
+                           :child-state {:content content}}})
+
+        (tracking-area nil
+                       {:on-move (on-move row-inspect owner)
+                        :on-exit (on-exit row-inspect owner)
+                        :on-click (on-click row-inspect owner)
+                        :underlap-x 40
+                        :track-border-only? track-border-only?
+                        :determine-width-from-contents? true}
+
+)))))
+
+(defn row-probe [k schema {:keys [track-border-only?]} content]
+  (om/build row-probe-component k
+            {:init-state {:track-border-only? track-border-only?}
+             :state {:content content
+                     :schema schema}}))

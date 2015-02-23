@@ -1,40 +1,57 @@
 (ns contrast.components.eyedropper-zone
-  (:require [om.core :as om :include-macros true]
-            [om.dom :as dom :include-macros true]
+  (:require [cljs.core.async :refer [put! chan mult tap close! <!]]
+            [com.mrcslws.om-spec :as spec]
             [contrast.components.canvas :as cnv]
-            [contrast.components.tracking-area :refer [tracking-area]]
+            [contrast.components.tracking-area :refer [tracking-area-component]]
             [contrast.pixel :as pixel]
-            [contrast.state :as state]))
+            [contrast.state :as state]
+            [om.dom :as dom :include-macros true]
+            [om.core :as om :include-macros true])
+  (:require-macros [cljs.core.async.macros :refer [go-loop]]))
 
-(defn set-color! [color-inspect color owner]
-  (om/update! color-inspect (:key (om/get-state owner :schema)) color))
+(defn set-color! [color-inspect color schema]
+  (om/update! color-inspect (:key schema) color))
 
-(defn on-move [color-inspect owner]
-  (fn [content-x content-y]
-    (when-let [imagedata (om/get-state owner :imagedata)]
-      (set-color! color-inspect (pixel/get imagedata content-x content-y) owner))))
-
-(defn on-exit [color-inspect owner]
-  (fn [_ _]
-    (set-color! color-inspect nil owner)))
-
-(defn eyedropper-zone-component [k owner {:keys [updates]}]
+(defn eyedropper-zone-component [k owner]
   (reify
     om/IDisplayName
     (display-name [_]
       "eyedropper-zone")
 
-    om/IRenderState
-    (render-state [_ {:keys [content schema imagedata]}]
-      (let [color-inspect (state/color-inspect k)]
-       (apply tracking-area nil
-              {:on-move (on-move color-inspect owner)
-               :on-exit (on-exit color-inspect owner)
-               :determine-width-from-contents? true}
-              content)))))
+    om/IInitState
+    (init-state [_]
+      {:moves (chan)
+       :exits (chan)})
 
-(defn eyedropper-zone [k schema imagedata & content]
-  (om/build eyedropper-zone-component k
-            {:state {:content content
-                     :schema schema
-                     :imagedata imagedata}}))
+    om/IWillMount
+    (will-mount [_]
+      (let [color-inspect (state/color-inspect k)]
+        (go-loop []
+          (let [[content-x content-y] (<! (om/get-state owner :moves))
+                {:keys [imagedata schema]} (om/get-state owner)]
+            (when imagedata
+              (set-color! color-inspect (pixel/get imagedata content-x content-y)
+                           schema))
+            (recur)))
+
+        (go-loop []
+          (let [_ (<! (om/get-state owner :exits))
+                {:keys [schema]} (om/get-state owner)]
+            (set-color! color-inspect nil schema)
+            (recur)))))
+
+    om/IRenderState
+    (render-state [_ {:keys [moves exits]}]
+      (spec/render
+       {:f tracking-area-component
+        :m {:state {:moves moves
+                    :exits exits
+                    :determine-width-from-contents? true}}
+        :children [(spec/children-in-div-spec owner)]}))))
+
+(defn eyedropper-zone-spec [k schema imagedata children]
+  {:f eyedropper-zone-component
+   :props k
+   :m {:state {:schema schema
+               :imagedata imagedata}}
+   :children children})

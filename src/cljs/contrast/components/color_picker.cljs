@@ -1,11 +1,10 @@
 (ns contrast.components.color-picker
-  (:require [om.core :as om :include-macros true]
-            [om.dom :as dom :include-macros true]
-            [cljs.core.async :refer [<! put! chan alts! take!]]
+  (:require [cljs.core.async :refer [<! put! chan alts! take!]]
+            [contrast.common :refer [rgb->hexcode hexcode->rgb]]
             [contrast.components.canvas :as cnv]
             [contrast.pixel :as pixel]
-            [contrast.common :refer [rgb->hexcode hexcode->rgb]]
-            [contrast.components.tracking-area :refer [tracking-area]])
+            [om.dom :as dom :include-macros true]
+            [om.core :as om :include-macros true])
   (:require-macros [cljs.core.async.macros :refer [go-loop alt!]]))
 
 (defn handle-change [evt target schema owner]

@@ -1,9 +1,9 @@
 (ns contrast.components.canvas
-  (:require [om.core :as om :include-macros true]
-            [om.dom :as dom :include-macros true]
-            [contrast.pixel :as pixel]
+  (:require [cljs.core.async :refer [put! chan <!]]
             [contrast.common :refer [progress]]
-            [cljs.core.async :refer [put! chan <!]])
+            [contrast.pixel :as pixel]
+            [om.dom :as dom :include-macros true]
+            [om.core :as om :include-macros true])
   (:require-macros [cljs.core.async.macros :refer [go-loop]]))
 
 (defn clear [ctx]

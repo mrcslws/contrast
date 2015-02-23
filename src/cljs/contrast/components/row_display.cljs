@@ -1,10 +1,10 @@
 (ns contrast.components.row-display
-  (:require [om.core :as om :include-macros true]
-            [om.dom :as dom :include-macros true]
-            [contrast.common :refer [trace-rets]]
+  (:require [contrast.common :refer [trace-rets]]
             [contrast.components.canvas :as cnv]
             [contrast.pixel :as pixel]
-            [contrast.state :as state]))
+            [contrast.state :as state]
+            [om.dom :as dom :include-macros true]
+            [om.core :as om :include-macros true]))
 
 (defn idwriter [row-inspect stalkee]
   (fn [imagedata]
@@ -12,18 +12,21 @@
       (when (and sr stalkee)
         (let [width (.-width imagedata)
               height (.-height imagedata)
+              d (.-data imagedata)
               sw (.-width stalkee)
               sh (.-height stalkee)
               sd (.-data stalkee)]
-          ;; TODO handle the case where this assert fails
           (assert (= sw width))
-
           (assert (< sr sh))
-
           (dotimes [row height]
             (dotimes [col width]
-              (pixel/copy! imagedata col row
-                           stalkee col sr))))))
+              (let [base (pixel/base width col row)
+                    sbase (pixel/base width col sr)]
+                (doto d
+                  (aset base (aget sd sbase))
+                  (aset (+ base 1) (aget sd (+ sbase 1)))
+                  (aset (+ base 2) (aget sd (+ sbase 2)))
+                  (aset (+ base 3) (aget sd (+ sbase 3))))))))))
     imagedata))
 
 ;; TODO display a red border when the illusion's tracking area is tracking.

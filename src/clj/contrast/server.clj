@@ -13,6 +13,9 @@
 (deftemplate main-page
   (io/resource "index.html") [] [:body] (if is-dev? inject-devmode-html identity))
 
+(deftemplate content-transform-page
+  (io/resource "content-transform.html") [] [:body] (if is-dev? inject-devmode-html identity))
+
 (deftemplate sandbox-page
   (io/resource "sandbox.html") [] [:body] (if is-dev? inject-devmode-html identity))
 
@@ -20,6 +23,7 @@
   (resources "/")
   (resources "/react" {:root "react"})
   (GET "/sandbox" req (sandbox-page))
+  (GET "/content-transform" req (content-transform-page))
   (GET "/*" req (main-page)))
 
 (def http-handler

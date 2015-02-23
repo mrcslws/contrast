@@ -1,7 +1,7 @@
 (ns contrast.components.chan-handlers
-  (:require [om.core :as om :include-macros true]
+  (:require [cljs.core.async :refer [put! chan mult tap close! <!]]
             [om.dom :as dom :include-macros true]
-            [cljs.core.async :refer [put! chan mult tap close! <!]])
+            [om.core :as om :include-macros true])
   (:require-macros [cljs.core.async.macros :refer [go-loop]]))
 
 (defn chan-gen-component [canary owner {:keys [f]}]

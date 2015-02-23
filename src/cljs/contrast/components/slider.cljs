@@ -1,12 +1,13 @@
 (ns contrast.components.slider
-  (:require [om.core :as om :include-macros true]
-            [om.dom :as dom :include-macros true]
-            [cljs.core.async :refer [timeout <!]]
+  (:require [cljs.core.async :refer [chan timeout <!]]
+            [com.mrcslws.om-spec :as spec]
+            [contrast.common :refer [wide-background-image background-image]]
+            [contrast.components.tracking-area :refer [tracking-area-component]]
+            [contrast.dom :as domh]
             [goog.string :as gstring]
             [goog.string.format]
-            [contrast.dom :as domh]
-            [contrast.common :refer [wide-background-image background-image]]
-            [contrast.components.tracking-area :refer [tracking-area]])
+            [om.dom :as dom :include-macros true]
+            [om.core :as om :include-macros true])
   (:require-macros [cljs.core.async.macros :refer [go-loop]]))
 
 (def wknob 13)
@@ -52,21 +53,6 @@
         (when (< p 1)
           (recur))))))
 
-(defn on-move [target schema owner]
-  (fn [content-x _]
-    (om/set-state! owner :is-tracking? true)
-    (om/update! target (:key schema) (slider-value content-x schema owner))))
-
-(defn on-exit [target schema owner]
-  (fn [_ _]
-    (om/set-state! owner :is-tracking? false)
-    (om/update! target (:key schema) (om/get-state owner :locked-value))))
-
-(defn on-click [target schema owner]
-  (fn []
-    (om/set-state! owner :locked-value (get target (:key schema)))
-    (bounce owner)))
-
 (defn slider-left [value schema]
   (-> value
       (/ (- (:max schema) (:min schema)))
@@ -74,16 +60,11 @@
       js/Math.round
       (str "%")))
 
-;; TODO:
-;; - Touch compatibility
-;; - Keyboard compatibility
-;; - Text styling extension point?
-;; - :pre verification of state
-(defn slider-component [{:keys [target schema]} owner]
+(defn slider-component-internal [{:keys [target schema]} owner]
   (reify
     om/IDisplayName
     (display-name [_]
-      "slider")
+      "slider-internal")
 
     om/IInitState
     (init-state [_]
@@ -92,75 +73,115 @@
 
     om/IWillMount
     (will-mount [_]
-      (om/set-state! owner :locked-value (get target (:key schema))))
+      (om/set-state! owner :locked-value (get target (:key schema)))
+
+      (go-loop []
+        (let [[content-x _] (<! (om/get-state owner :moves))]
+          (om/set-state! owner :is-tracking? true)
+          (om/update! target (:key schema) (slider-value content-x schema owner))
+          (recur)))
+
+      (go-loop []
+        (let [_ (<! (om/get-state owner :exits))]
+          (om/set-state! owner :is-tracking? false)
+          (om/update! target (:key schema) (om/get-state owner :locked-value))
+          (recur)))
+
+      (go-loop []
+        (let [_ (<! (om/get-state owner :clicks))]
+          (om/set-state! owner :locked-value (get target (:key schema)))
+          (bounce owner)
+          (recur))))
 
     om/IRenderState
-    (render-state [_ {:keys [is-tracking?]}]
-      (tracking-area
-       nil
-       {:on-move (on-move target schema owner)
-        :on-exit (on-exit target schema owner)
-        :on-click (on-click target schema owner)
-        :underlap-x 10
-        :underlap-y 5}
-       (dom/div #js {:ref "slider"
-                     :style #js {;; Make room for the bounce.
-                                 :marginTop 26
-                                 :marginBottom 4
-                                 :height 4}}
-                (apply dom/div #js {:style #js {:position "absolute"
-                                                :zIndex 0
-                                                :height 4
-                                                :width "100%"}}
-                       (wide-background-image "/images/SliderLeft.png" 8
-                                              "/images/SliderCenter.png"
-                                              "/images/SliderRight.png" 8
-                                              4))
-                (dom/div #js {:style
-                              #js {:position "absolute"
-                                   :zIndex 1
-                                   :left (slider-left (om/get-state
-                                                       owner :locked-value)
-                                                      schema)}}
-                         (dom/div #js {:style #js {:position "absolute"
-                                                   :left (- (quot wmarker 2))}}
-                                  (background-image "/images/SliderMarker.png"
-                                                    wmarker 4)))
-                (dom/div #js {:style
-                              #js {:position "absolute"
-                                   :zIndex 2
-                                   ;; I apologize for the magic number.
-                                   :top (- -4
-                                           (om/get-state owner :knob-yoffset))
-                                   :left (slider-left (get target
-                                                           (:key schema))
-                                                      schema)}}
-                         (dom/div #js {:style #js {:position "absolute"
-                                                   :left (- (quot wknob 2))}}
-                                  (background-image "/images/SliderKnob.png"
-                                                    wknob 13))
+    (render-state [_ {:keys [is-tracking? knob-yoffset locked-value]}]
+      (dom/div #js {:ref "slider"
+                    :style #js {;; Make room for the bounce.
+                                :marginTop 26
+                                :marginBottom 4
+                                :height 4}}
+               (apply dom/div #js {:style #js {:position "absolute"
+                                               :zIndex 0
+                                               :height 4
+                                               :width "100%"}}
+                      (wide-background-image "/images/SliderLeft.png" 8
+                                             "/images/SliderCenter.png"
+                                             "/images/SliderRight.png" 8
+                                             4))
+               (dom/div #js {:style
+                             #js {:position "absolute"
+                                  :zIndex 1
+                                  :left (slider-left locked-value schema)}}
+                        (dom/div #js {:style #js {:position "absolute"
+                                                  :left (- (quot wmarker 2))}}
+                                 (background-image "/images/SliderMarker.png"
+                                                   wmarker 4)))
+               (dom/div #js {:style
+                             #js {:position "absolute"
+                                  :zIndex 2
+                                  ;; I apologize for the magic number.
+                                  :top (- -4 knob-yoffset)
+                                  :left (slider-left (get target
+                                                          (:key schema))
+                                                     schema)}}
+                        (dom/div #js {:style #js {:position "absolute"
+                                                  :left (- (quot wknob 2))}}
+                                 (background-image "/images/SliderKnob.png"
+                                                   wknob 13))
+                        (dom/div
+                         #js {:style
+                              #js {:position "relative"
+
+                                   :width wlabel
+                                   :left (- (- (quot wlabel 2)
+                                               (quot wknob 2)))
+
+                                   :top -13
+                                   :height 10
+                                   :display (if is-tracking? "block" "none")}}
                          (dom/div
                           #js {:style
-                               #js {:position "relative"
+                               #js {:font "10px Helvetica, Arial, sans-serif"
+                                    :fontWeight "bold"
+                                    :color "#ccc"
+                                    :textAlign "center"}}
+                          (cond->> (get target (:key schema))
 
-                                    :width wlabel
-                                    :left (- (- (quot wlabel 2)
-                                                (quot wknob 2)))
+                                   (contains? schema :str-format)
+                                   (gstring/format (:str-format
+                                                    schema))))))))))
 
-                                    :top -13
-                                    :height 10
-                                    :display (if is-tracking? "block" "none")}}
-                          (dom/div
-                           #js {:style
-                                #js {:font "10px Helvetica, Arial, sans-serif"
-                                     :fontWeight "bold"
-                                     :color "#ccc"
-                                     :textAlign "center"}}
-                           (cond->> (get target (:key schema))
+;; TODO:
+;; - Touch compatibility
+;; - Keyboard compatibility
+;; - Text styling extension point?
+;; - :pre verification of state
+(defn slider-component [v owner]
+  (reify
+    om/IDisplayName
+    (display-name [_]
+      "slider")
 
-                                    (contains? schema :str-format)
-                                    (gstring/format (:str-format
-                                                     schema)))))))))))
+    om/IInitState
+    (init-state [_]
+      {:moves (chan)
+       :clicks (chan)
+       :exits (chan)})
+
+    om/IRenderState
+    (render-state [_ {:keys [is-tracking? moves clicks exits]}]
+      (spec/render
+       {:f tracking-area-component
+        :m {:state {:moves moves
+                    :clicks clicks
+                    :exits exits
+                    :underlap-x 10
+                    :underlap-y 5}}
+        :children [{:f slider-component-internal
+                    :props v
+                    :m {:state {:moves moves
+                                :clicks clicks
+                                :exits exits}}}]}))))
 
 (defn slider [style target schema]
   (dom/div #js {:style (clj->js style)}

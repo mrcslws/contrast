@@ -1,16 +1,15 @@
 (ns contrast.components.spectrum-picker
-  (:require [om.core :as om :include-macros true]
-            [om.dom :as dom :include-macros true]
-            [cljs.core.async :refer [<! put! chan alts! take!]]
-            [goog.events :as events]
+  (:require [cljs.core.async :refer [<! put! chan alts! take!]]
+            [com.mrcslws.om-spec :as spec]
             [contrast.common :refer [progress spectrum-dictionary rgb->hexcode trace-rets]]
-            [contrast.components.canvas :as cnv]
-            [contrast.canvas-inspectors :refer [inspected]]
+            [contrast.components.canvas :as cnv :refer [canvas-component]]
+            [contrast.components.chan-handlers :refer [chan-genrender]]
             [contrast.components.color-picker :refer [color-picker-component]]
-            [contrast.pixel :as pixel]
-            [contrast.components.tracking-area :refer [tracking-area]])
-  (:require-macros [contrast.macros :refer [drain!]]
-                   [cljs.core.async.macros :refer [go-loop alt!]]))
+            [goog.events :as events]
+            [om.dom :as dom :include-macros true]
+            [om.core :as om :include-macros true])
+  (:require-macros [cljs.core.async.macros :refer [go-loop alt!]]
+                   [contrast.macros :refer [drain!]]))
 
 (defn listen [el type]
   (let [port (chan)
@@ -174,7 +173,7 @@
 
 (def canvash 30)
 
-(defn spectrum-picker-component [figure owner {:keys [inspector]}]
+(defn spectrum-picker-component [figure owner {:keys [canvas-spec-transform]}]
   (reify
     om/IDisplayName
     (display-name [_]
@@ -201,12 +200,13 @@
                                   :width width
                                   :marginRight 12
                                   :height (+ canvash 30)}}
-                 (dom/div #js {:style #js {:position "absolute"
-                                           :top 0
-                                           :width width
-                                           :height 20
-                                           :font "10px Helvetica, Arial, sans-serif"
-                                           :color "#696969"}}
+                 (dom/div #js {:style
+                               #js {:position "absolute"
+                                    :top 0
+                                    :width width
+                                    :height 20
+                                    :font "10px Helvetica, Arial, sans-serif"
+                                    :color "#696969"}}
                           (dom/div #js {:style #js {:position "absolute"
                                                     :top 2
                                                     :left -3}}
@@ -247,40 +247,49 @@
                           (dom/div #js {:style
                                         #js {:position "absolute"
                                              :top canvash}}
-                                   (om/build color-knob-component (:left spectrum)
-                                             {:init-state {:listener knob-actions}
+                                   (om/build color-knob-component
+                                             (:left spectrum)
+                                             {:init-state {:listener
+                                                           knob-actions}
                                               :state {:target-width width}}))
                           (dom/div #js {:style
                                         #js {:position "absolute"
                                              :top canvash}}
-                                   (om/build color-knob-component (:right spectrum)
-                                             {:init-state {:listener knob-actions}
+                                   (om/build color-knob-component (:right
+                                                                   spectrum)
+                                             {:init-state {:listener
+                                                           knob-actions}
                                               :state {:target-width width}}))
-                          (inspected (fn [ch]
-                                       (cnv/canvas spectrum width canvash
-                                                   (cnv/idwriter->painter
-                                                    (trace-rets
-                                                     (cnv/solid-vertical-stripe-idwriter
-                                                      (comp
-                                                       ;; [-1 1] -> color
-                                                       (spectrum-dictionary spectrum)
+                          (let [idwriter (cnv/solid-vertical-stripe-idwriter
+                                          (comp
+                                           ;; [-1 1] -> color
+                                           (spectrum-dictionary spectrum)
 
-                                                       ;; col -> [-1 1]
-                                                       #(dec (* 2 (/ % width)))))
-                                                     ch))))
-                                     figure
+                                           ;; col -> [-1 1]
+                                           #(dec (* 2 (/ % width)))))
+                                awaiting-fpaint (fn [p]
+                                                  {:f canvas-component
+                                                   :props spectrum
+                                                   :m {:state {:width width
+                                                               :height canvash}
+                                                       :opts {:paint p}}})]
+                            (if canvas-spec-transform
+                              (chan-genrender
+                               (fn [channel imgdata]
+                                 (-> (awaiting-fpaint (cnv/idwriter->painter
+                                                       (trace-rets idwriter
+                                                                   channel)))
+                                     (canvas-spec-transform imgdata)
+                                     spec/render))
+                               figure)
+                              (-> (awaiting-fpaint (cnv/idwriter->painter
+                                                    idwriter))
+                                  spec/render)))))))))
 
-                                     ;; TODO - it's annoying when you're dragging
-                                     ;; and you hover over the image.
-                                     ;; It's possible to only use the inspector
-                                     ;; when not dragging, but that causes
-                                     ;; unmounting / mounting.
-                                     inspector)))))))
-
-(defn spectrum-picker
+(defn spectrum-picker-spec
   ([spectrum width]
-     (spectrum-picker spectrum width nil))
-  ([spectrum width inspector]
+     (spectrum-picker-spec spectrum width nil))
+  ([spectrum width canvas-spec-transform]
      (om/build spectrum-picker-component spectrum
                {:init-state {:width width}
-                :opts {:inspector inspector}})))
+                :opts {:canvas-spec-transform canvas-spec-transform}})))

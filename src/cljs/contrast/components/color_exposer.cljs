@@ -1,9 +1,9 @@
 (ns contrast.components.color-exposer
-  (:require [om.core :as om :include-macros true]
-            [om.dom :as dom :include-macros true]
+  (:require [com.mrcslws.om-spec :as spec]
             [contrast.components.canvas :as cnv]
-            [contrast.components.tracking-area :refer [tracking-area]]
-            [contrast.state :as state]))
+            [contrast.state :as state]
+            [om.dom :as dom :include-macros true]
+            [om.core :as om :include-macros true]))
 
 (defn idwriter [color-inspect stalkee]
   (fn [imagedata]
@@ -34,7 +34,7 @@
       "color-exposer")
 
     om/IRenderState
-    (render-state [_ {:keys [content imagedata]}]
+    (render-state [_ {:keys [imagedata]}]
       (let [color-inspect (om/observe owner (state/color-inspect k))]
         (dom/div #js {:style #js {:display "inline-block"
                                   :verticalAlign "top"
@@ -50,16 +50,13 @@
                                                                 color-inspect
                                                                 imagedata)))
                             ;; (cnv/fading-canvas [color-inspect imagedata]
-                            ;;                    (.-width imagedata)
-                            ;;                    (.-height imagedata)
-                            ;;                    (idwriter color-inspect imagedata)
-                            ;;                    64)
-                            ))
-                 (apply dom/div #js {:style #js {:position "relative"
-                                                 :zIndex 0}}
-                        content))))))
+                            ;;                  (.-width imagedata)
+                            ;;                  (.-height imagedata)
+                            ;;                  (idwriter color-inspect imagedata)
+                            ;;                  64)
+                            )
 
-(defn color-exposer [k imagedata & content]
-  (om/build color-exposer-component k
-            {:state {:content content
-                     :imagedata imagedata}}))
+                          )
+                 (dom/div #js {:style #js {:position "relative"
+                                           :zIndex 0}}
+                          (spec/children-in-div owner)))))))
