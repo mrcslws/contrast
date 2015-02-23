@@ -66,61 +66,34 @@
                                   :marginBottom 6}}
          els))
 
-(defn probed-illusion [k figure idwriter include-row-probe?]
-  (let [canary [k figure]
-        {:keys [width height]} figure]
-   (illusion
-    (chan-genrender
-     (fn [channel imgdata]
-       (dom/div
-        nil
-        (spec/render
-         (let [base (->> {:f canvas-component
-                          :props canary
-                          :m {:state {:width width :height height}
-                              :opts {:paint
-                                     (cnv/idwriter->painter
-                                      (trace-rets idwriter channel))}}}
+(defn hover-exposer [k imgdata children]
+  (->> children
+       (assoc {:f color-exposer-component
+               :props k
+               :m {:state {:imagedata imgdata}}}
+         :children)
+       vector
+       (eyedropper-zone-spec k {:key :selected-color}
+                             imgdata)))
 
-                         vector
-                         (assoc {:f color-exposer-component
+(defn spec->row-probed [k imgdata spec]
+  (dom/div nil
+           (spec/render (row-probe-spec k {:key :probed-row} true [spec]))
+           (dom/div
+            #js {:style #js {:marginTop 20
+                             :position "relative"
+                             :left -3
+                             :borderLeft "3px solid red"
+                             :borderRight "3px solid red"}}
+            (chan-genrender
+             (fn [channel row-display-imgdata]
+               (spec/render
+                (hover-exposer k row-display-imgdata
+                               [{:f row-display-component
                                  :props k
-                                 :m {:state {:imagedata imgdata}}}
-                           :children)
-
-                         vector
-                         (eyedropper-zone-spec k {:key :selected-color}
-                                               imgdata))]
-           (if include-row-probe?
-             (row-probe-spec k {:key :probed-row} true
-                             [base])
-             base)))
-        (when include-row-probe?
-          (dom/div
-           #js {:style #js {:marginTop 20
-                            :position "relative"
-                            :left -3
-                            :borderLeft "3px solid red"
-                            :borderRight "3px solid red"}}
-           (chan-genrender
-            (fn [channel row-display-imgdata]
-              (spec/render
-               (->> {:f row-display-component
-                     :props k
-                     :m {:state {:stalkee imgdata}
-                         :opts {:subscriber channel}}}
-
-                    vector
-                    (assoc {:f color-exposer-component
-                            :props k
-                            :m {:state {:imagedata row-display-imgdata}}}
-                      :children)
-
-                    vector
-                    (eyedropper-zone-spec
-                     k {:key :selected-color} row-display-imgdata))))
-            imgdata)))))
-     canary))))
+                                 :m {:state {:stalkee imgdata}
+                                     :opts {:subscriber channel}}}])))
+             imgdata))))
 
 (defn single-gradient [k owner]
   (reify
@@ -130,12 +103,27 @@
 
     om/IRender
     (render [_]
-      (let [figure (om/observe owner (state/figure k))]
+      (let [figure (om/observe owner (state/figure k))
+            canary [k figure]
+            {:keys [width height]} figure]
         (dom/div
          nil
-         (probed-illusion k figure
-                          (illusions/single-sinusoidal-gradient-idwriter figure)
-                          true)
+         (illusion
+          (chan-genrender
+           (fn [channel imgdata]
+             (->> {:f canvas-component
+                   :props canary
+                   :m {:state {:width width :height height}
+                       :opts {:paint
+                              (cnv/idwriter->painter
+                               (trace-rets
+                                (illusions/single-sinusoidal-gradient-idwriter
+                                 figure) channel))}}}
+
+                  vector
+                  (hover-exposer k imgdata)
+                  (spec->row-probed k imgdata)))
+           canary))
          (algorithm
           (dom/div
            #js {:style #js {:width 280}} ;; TODO temporary hack.
@@ -171,11 +159,26 @@
 
     om/IRender
     (render [_]
-      (let [figure (om/observe owner (state/figure k))]
+      (let [figure (om/observe owner (state/figure k))
+            canary [k figure]
+            {:keys [width height]} figure]
         (dom/div nil
-                 (probed-illusion k figure
-                                  (illusions/sweep-grating-idwriter figure)
-                                  true)
+                 (illusion
+                  (chan-genrender
+                   (fn [channel imgdata]
+                     (->> {:f canvas-component
+                           :props canary
+                           :m {:state {:width width :height height}
+                               :opts {:paint
+                                      (cnv/idwriter->painter
+                                       (trace-rets
+                                        (illusions/sweep-grating-idwriter
+                                         figure) channel))}}}
+
+                          vector
+                          (hover-exposer k imgdata)
+                          (spec->row-probed k imgdata)))
+                   canary))
                  (algorithm
                   (dom/div
                    #js {:style #js {:width 170}} ;; TODO temporary hack.
@@ -199,12 +202,27 @@
 
     om/IRender
     (render [_]
-      (let [figure (om/observe owner (state/figure k))]
+      (let [figure (om/observe owner (state/figure k))
+            canary [k figure]
+            {:keys [width height]} figure]
         (dom/div
          nil
-         (probed-illusion k figure
-                          (illusions/harmonic-grating-idwriter figure)
-                          false)
+         (illusion
+          (chan-genrender
+           (fn [channel imgdata]
+             (->> {:f canvas-component
+                   :props canary
+                   :m {:state {:width width :height height}
+                       :opts {:paint
+                              (cnv/idwriter->painter
+                               (trace-rets
+                                (illusions/harmonic-grating-idwriter
+                                 figure) channel))}}}
+
+                  vector
+                  (hover-exposer k imgdata)
+                  (spec->row-probed k imgdata)))
+           canary))
          (algorithm
           (section
            (heading "For each n ∈ "
