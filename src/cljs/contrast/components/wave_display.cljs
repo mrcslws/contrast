@@ -12,12 +12,13 @@
           height (.-height imagedata)
           d (.-data imagedata)
           amplitude (/ height 3)
+          wfn (partial (get-method wavefn wave) wave)
           ;; perf
           harmonics (om/value harmonics)]
       (dotimes [col width]
         (let [s (reduce (fn [s h]
                           (let [period (/ period h)
-                                y (/ (wavefn wave col period) h)
+                                y (/ (wfn period col) h)
                                 row (wavey->ycoord y amplitude height)
                                 base (pixel/base width col row)]
                             (doto d

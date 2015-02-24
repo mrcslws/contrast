@@ -95,7 +95,7 @@
     (fn [_] 0))
    (comp
     (spectrum-dictionary (:spectrum config))
-    (fn [x] (wavefn (:wave config) x 1))
+    (partial (get-method wavefn (:wave config)) (:wave config) 1)
     (x->total-distance (:left-period config)
                        (:right-period config)
                        (:width config)))))
@@ -103,7 +103,7 @@
 (defn sums-of-harmonics [{:keys [harmonics period wave]}]
   (let [harray (clj->js harmonics)
         c (count harmonics)
-        wfn (partial (get-method wavefn wave) wave)]
+        wfn (partial (get-method wavefn wave) wave period)]
     (fn [x]
       (loop [s 0
              i 0]
@@ -112,7 +112,7 @@
           (let [h (aget harray i)]
               (recur (-> x
                       (* h)
-                      (wfn period)
+                      wfn
                       (* (/ 1 h))
                       (+ s))
                   (inc i))))))))

@@ -47,10 +47,10 @@
                       rgb)))
 
 (defmulti wavefn
-  (fn [wave col period]
+  (fn [wave period col]
     wave))
 
-(defmethod wavefn :sine [_ col period]
+(defmethod wavefn :sine [_ period col]
   (-> col
       (* 2 js/Math.PI)
       (/ period)
@@ -59,7 +59,7 @@
 (defn cot [x]
   (/ 1 (js/Math.tan x)))
 
-(defmethod wavefn :sawtooth [_ col period]
+(defmethod wavefn :sawtooth [_ period col]
   (-> col
       (* js/Math.PI)
       (/ period)
@@ -69,7 +69,7 @@
       (/ js/Math.PI)
       -))
 
-(defmethod wavefn :triangle [_ col period]
+(defmethod wavefn :triangle [_ period col]
   (-> col
       (/ period)
       (mod 1)
@@ -78,8 +78,8 @@
       (- 0.25)
       (* 4)))
 
-(defmethod wavefn :square [_ col period]
-  (if (pos? (wavefn :sine col period))
+(defmethod wavefn :square [_ period col]
+  (if (pos? (wavefn :sine period col))
     1
     -1))
 

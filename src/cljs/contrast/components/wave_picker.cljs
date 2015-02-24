@@ -12,10 +12,10 @@
           d (.-data imagedata)
           period (/ width 2)
           amplitude (/ (dec height) 2)
-          cshift (* shift period)]
+          cshift (* shift period)
+          wfn (partial (get-method wavefn wave) wave period)]
       (dotimes [col width]
-        (let [row (wavey->ycoord (wavefn wave (+ cshift col)
-                                         period)
+        (let [row (wavey->ycoord (wfn (+ cshift col))
                                  amplitude height)
               base (pixel/base width col row)]
           (doto d
