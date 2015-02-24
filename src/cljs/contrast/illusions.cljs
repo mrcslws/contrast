@@ -71,12 +71,22 @@
 (defn single-sinusoidal-gradient-idwriter [config]
   (two-sides-idwriter config (number-line-maker linear->sinusoidal)))
 
-(defn accelerating-sine-wave [{:keys [contrast]}]
-  (fn [x]
-    (-> x
-        (/ (* 22 js/Math.PI))
-        (js/Math.pow 3)
-        js/Math.sin)))
+;; If a body is accelerating from start-period at x of 0 to
+;; stop-period at x of (width - 1), get the distance covered at an
+;; in-between point. Compose this with other functions
+;; (e.g. waveforms) to get an accelerating version of that function.
+(defn x->total-distance [start-period end-period duration]
+  (let [period-acceleration (/ (- end-period start-period) duration)]
+    (if (zero? period-acceleration)
+      (fn [x]
+        (* x (/ 1 start-period)))
+      (fn [x]
+        (-> x
+            (* period-acceleration)
+            (+ start-period)
+            js/Math.log
+            (- (js/Math.log start-period))
+            (* (/ 1 period-acceleration)))))))
 
 (defn sweep-grating-idwriter [config]
   (cnv/gradient-vertical-stripe-idwriter
@@ -85,7 +95,10 @@
     (fn [_] 0))
    (comp
     (spectrum-dictionary (:spectrum config))
-    (accelerating-sine-wave config))))
+    (fn [x] (wavefn (:wave config) x 1))
+    (x->total-distance (:left-period config)
+                       (:right-period config)
+                       (:width config)))))
 
 (defn sums-of-harmonics [{:keys [harmonics period wave]}]
   (let [harray (clj->js harmonics)

@@ -121,7 +121,7 @@
         :m {:state {:moves moves
                     :exits exits
                     :clicks clicks
-                    :underlap-x 40
+                    :underlap-x 30
                     :track-border-only? track-border-only?
                     :determine-width-from-contents? true}}
         :children [(spec/children-in-div-spec owner)]}))))

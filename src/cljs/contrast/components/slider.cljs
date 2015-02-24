@@ -13,6 +13,9 @@
 (def wknob 13)
 (def wmarker 8)
 (def wlabel 100)
+(def bounce-duration 500)
+(def b1height 15)
+(def b2height 4)
 
 (defn slider-value [x schema owner]
   (let [{vmax :max vmin :min interval :interval} schema]
@@ -27,31 +30,21 @@
         (max vmin)
         (min vmax))))
 
-(defn bounce [owner]
-  (let [start (js/Date.now)
-        bounce-duration 500
-        b1height 15
-        b2height 4]
-    (go-loop []
-      (<! (timeout 20))
-      (let [p (-> (js/Date.now)
-                  (- start)
-                  (/ bounce-duration)
-                  (min 1))
-            b2 (> p 0.5)
-            y (* (if b2
-                   b2height
-                   b1height)
-                 (- 1 (-> p
-                          (cond-> b2
-                                  (- 0.5))
-                          (* 4)
-                          (- 1)
-                          (js/Math.pow 2))))]
-
-        (om/set-state! owner :knob-yoffset y)
-        (when (< p 1)
-          (recur))))))
+(defn knob-yoffset [bounce-start]
+  (let [p (-> (js/Date.now)
+              (- bounce-start)
+              (/ bounce-duration)
+              (min 1))
+        b2 (> p 0.5)]
+    (* (if b2
+         b2height
+         b1height)
+       (- 1 (-> p
+                (cond-> b2
+                        (- 0.5))
+                (* 4)
+                (- 1)
+                (js/Math.pow 2))))))
 
 (defn slider-left [value schema]
   (-> value
@@ -68,8 +61,8 @@
 
     om/IInitState
     (init-state [_]
-      {:knob-offset 0
-       :is-tracking? false})
+      {:is-tracking? false
+       :bounce-start 0})
 
     om/IWillMount
     (will-mount [_]
@@ -89,14 +82,24 @@
 
       (go-loop []
         (let [_ (<! (om/get-state owner :clicks))]
-          (om/set-state! owner :locked-value (get target (:key schema)))
-          (bounce owner)
+          (om/set-state! owner :locked-value (get @target (:key schema)))
+          (om/set-state! owner :bounce-start (js/Date.now))
           (recur))))
 
+    om/IDidUpdate
+    (did-update [_ _ _]
+      (when (<= (- (js/Date.now) (om/get-state owner :bounce-start))
+                bounce-duration)
+        (om/refresh! owner)))
+
     om/IRenderState
-    (render-state [_ {:keys [is-tracking? knob-yoffset locked-value]}]
+    (render-state [_ {:keys [is-tracking? locked-value bounce-start]}]
       (dom/div #js {:ref "slider"
                     :style #js {;; Make room for the bounce.
+                                ;; It's a bit gross that the slider is, by
+                                ;; default, unaligned with text next to it, but
+                                ;; it's good to force the consumer to make room
+                                ;; for the animation (or choose not to).
                                 :marginTop 26
                                 :marginBottom 4
                                 :height 4}}
@@ -120,7 +123,8 @@
                              #js {:position "absolute"
                                   :zIndex 2
                                   ;; I apologize for the magic number.
-                                  :top (- -4 knob-yoffset)
+                                  :top (- -4
+                                          (knob-yoffset bounce-start))
                                   :left (slider-left (get target
                                                           (:key schema))
                                                      schema)}}
@@ -138,7 +142,8 @@
 
                                    :top -13
                                    :height 10
-                                   :display (if is-tracking? "block" "none")}}
+                                   :display (if is-tracking?
+                                              "block" "none")}}
                          (dom/div
                           #js {:style
                                #js {:font "10px Helvetica, Arial, sans-serif"
@@ -169,14 +174,13 @@
        :exits (chan)})
 
     om/IRenderState
-    (render-state [_ {:keys [is-tracking? moves clicks exits]}]
+    (render-state [_ {:keys [moves clicks exits]}]
       (spec/render
        {:f tracking-area-component
         :m {:state {:moves moves
                     :clicks clicks
                     :exits exits
-                    :underlap-x 10
-                    :underlap-y 5}}
+                    :underlap-x 10}}
         :children [{:f slider-component-internal
                     :props v
                     :m {:state {:moves moves
@@ -184,5 +188,6 @@
                                 :exits exits}}}]}))))
 
 (defn slider [style target schema]
-  (dom/div #js {:style (clj->js style)}
+  (dom/div #js {:style (clj->js (merge {:display "inline-block"}
+                                       style))}
            (om/build slider-component {:target target :schema schema})))

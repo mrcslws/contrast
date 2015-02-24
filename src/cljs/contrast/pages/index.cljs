@@ -26,6 +26,10 @@
   (:require-macros [cljs.core.async.macros :refer [go-loop]]))
 
 ;; TODO switch away from "radius". "width" or "diameter" are better.
+;; TODO dithering
+
+(defn label-pixels [c]
+  (str c " pixel" (when (not= c 1) "s")))
 
 (defn illusion [& els]
   (apply dom/div #js {:style #js {:display "inline-block"}}
@@ -125,31 +129,29 @@
                   (spec->row-probed k imgdata)))
            canary))
          (algorithm
-          (dom/div
-           #js {:style #js {:width 280}} ;; TODO temporary hack.
-           (section
-            (heading "Transition from:")
-            ;; TODO This isn't wired up to the illusion yet.
-            (indented (line (om/build color-picker-component
-                                      {:target (-> figure :spectrum :left)
-                                       :schema {:key :color}})
-                            " <-> "
-                            (om/build color-picker-component
-                                      {:target (-> figure :spectrum :right)
-                                       :schema {:key :color}}))))
-           (section
-            (heading "over a distance of:")
-            (indented (line (:transition-radius figure) " pixels."
-                            (slider {:position "absolute"
-                                     :right 13
-                                     :top -20
-                                     :width 180}
-                                    figure
-                                    {:key :transition-radius
-                                     :min 0
-                                     :max 250
-                                     :str-format "%dpx"
-                                     :interval 1})))))))))))
+          (section
+           (heading "Transition from:")
+           ;; TODO This isn't wired up to the illusion yet.
+           (indented (line (om/build color-picker-component
+                                     {:target (-> figure :spectrum :left)
+                                      :schema {:key :color}})
+                           " <-> "
+                           (om/build color-picker-component
+                                     {:target (-> figure :spectrum :right)
+                                      :schema {:key :color}}))))
+          (section
+           (heading "over a distance of:")
+           (indented (line (label-pixels (:transition-radius figure)) "."
+                           (slider {:position "absolute"
+                                    :right 13
+                                    :top -20
+                                    :width 180}
+                                   figure
+                                   {:key :transition-radius
+                                    :min 0
+                                    :max 250
+                                    :str-format "%dpx"
+                                    :interval 1}))))))))))
 
 (defn sweep-grating [k owner]
   (reify
@@ -180,18 +182,65 @@
                           (spec->row-probed k imgdata)))
                    canary))
                  (algorithm
-                  (dom/div
-                   #js {:style #js {:width 170}} ;; TODO temporary hack.
-                   (section
-                    (heading "Transition from:")
-                    (indented (line
-                               (om/build color-picker-component
-                                         {:target (-> figure :spectrum :left)
-                                          :schema {:key :color}})
-                               " <-> "
-                               (om/build color-picker-component
-                                         {:target (-> figure :spectrum :right)
-                                          :schema {:key :color}})))))))))))
+                  (section
+                   (heading "Choose your wave:")
+
+                   (indented
+                    (line "Create a " (name (:wave figure)) " wave.")
+                    (line (om/build wave-picker-component {:target figure
+                                                           :schema {:key :wave}
+                                                           :period (:period figure)}))
+                    (line)
+                    (line "On the left, use a period of")
+                    (indented
+                     (line (label-pixels (:left-period figure))
+                           (slider {:width 180
+                                    :position "absolute"
+                                    :right 13
+                                    :top -18}
+                                   figure
+                                   {:key :left-period
+                                    :min 1
+                                    :max 1000
+                                    :str-format "%dpx"
+                                    :interval 1})))
+                    (line)
+
+                    (line "On the right, use a period of"
+                          (indented
+                           (line (label-pixels (:right-period figure))
+                                 (slider {:width 180
+                                          :position "absolute"
+                                          :right 13
+                                          :top -18}
+                                         figure
+                                         {:key :right-period
+                                          :min 1
+                                          :max 1000
+                                          :str-format "%dpx"
+                                          :interval 1}))))
+                    (line)
+
+                    (line "In between, ease between these periods linearly.")))
+
+                  (section
+                   (heading "Use your wave:")
+                   (indented
+                    (line "On top, use 0.")
+                    (line "On bottom, use the wave's value.")
+                    (line "In between, ease between these values linearly.")))
+
+                  (section
+                   (heading "Translate to color:")
+                   (indented (line (spectrum-picker-spec
+                                    figure 360
+                                    (fn [spec imgdata]
+                                      (eyedropper-zone-spec
+                                       k {:key :selected-color} imgdata
+                                       [{:f color-exposer-component
+                                         :props k
+                                         :m {:state {:imagedata imgdata}}
+                                         :children [spec]}]))))))))))))
 
 
 (defn harmonic-grating [k owner]
@@ -221,7 +270,7 @@
 
                   vector
                   (hover-exposer k imgdata)
-                  (spec->row-probed k imgdata)))
+                  spec/render))
            canary))
          (algorithm
           (section
@@ -245,12 +294,8 @@
                   " * " (:period figure) " pixels."
                   (slider {:position "absolute"
                            :right 13
-                           ;; TODO the slider is really bad.  This
-                           ;; margin is needed for the animation to be
-                           ;; seen.
                            :top -15
-                           :width 180
-                           :display "inline-block"}
+                           :width 180}
                           figure
                           {:key :period
                            :min 1
@@ -397,6 +442,9 @@
                     :sweep-grating {:width 500
                                     :height 256
                                     :contrast 10
+                                    :wave :sine
+                                    :left-period 300
+                                    :right-period 1
                                     :spectrum {:left {:color [136 136 136]
                                                       :position -1}
                                                :right {:color [170 170 170]
