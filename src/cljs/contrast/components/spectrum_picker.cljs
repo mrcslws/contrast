@@ -173,7 +173,7 @@
 
 (def canvash 30)
 
-(defn spectrum-picker-component [figure owner {:keys [canvas-spec-transform]}]
+(defn spectrum-picker-component [spectrum owner {:keys [canvas-spec-transform]}]
   (reify
     om/IDisplayName
     (display-name [_]
@@ -195,96 +195,95 @@
 
     om/IRenderState
     (render-state [_ {:keys [width knob-actions dragging]}]
-      (let [spectrum (-> figure :spectrum)]
-        (dom/div #js {:style #js {:position "relative"
+      (dom/div #js {:style #js {:position "relative"
+                                :width width
+                                :marginRight 12
+                                :height (+ canvash 30)}}
+               (dom/div #js {:style
+                             #js {:position "absolute"
+                                  :top 0
                                   :width width
-                                  :marginRight 12
-                                  :height (+ canvash 30)}}
-                 (dom/div #js {:style
-                               #js {:position "absolute"
-                                    :top 0
-                                    :width width
-                                    :height 20
-                                    :font "10px Helvetica, Arial, sans-serif"
-                                    :color "#696969"}}
-                          (dom/div #js {:style #js {:position "absolute"
-                                                    :top 2
-                                                    :left -3}}
-                                   "-1")
-                          (dom/div #js {:style #js {:position "absolute"
-                                                    :left 0
-                                                    :bottom 0
-                                                    :width 1
-                                                    :height 7
-                                                    :backgroundColor "black"}})
-                          (dom/div #js {:style #js {:position "absolute"
-                                                    :top 2
-                                                    :left (-> width
-                                                              (/ 2)
-                                                              js/Math.round
-                                                              (- 2))}}
-                                   "0")
-                          (dom/div #js {:style #js {:position "absolute"
-                                                    :left (-> width
-                                                              (/ 2)
-                                                              js/Math.round)
-                                                    :bottom 0
-                                                    :width 1
-                                                    :height 7
-                                                    :backgroundColor "black"}})
-                          (dom/div #js {:style #js {:position "absolute"
-                                                    :top 2
-                                                    :right -2}}
-                                   "1")
-                          (dom/div #js {:style #js {:position "absolute"
-                                                    :right 0
-                                                    :bottom 0
-                                                    :width 1
-                                                    :height 7
-                                                    :backgroundColor "black"}}))
-                 (dom/div #js {:style #js {:position "absolute"
-                                           :top 20}}
-                          (dom/div #js {:style
-                                        #js {:position "absolute"
-                                             :top canvash}}
-                                   (om/build color-knob-component
-                                             (:left spectrum)
-                                             {:init-state {:listener
-                                                           knob-actions}
-                                              :state {:target-width width}}))
-                          (dom/div #js {:style
-                                        #js {:position "absolute"
-                                             :top canvash}}
-                                   (om/build color-knob-component (:right
-                                                                   spectrum)
-                                             {:init-state {:listener
-                                                           knob-actions}
-                                              :state {:target-width width}}))
-                          (let [idwriter (cnv/solid-vertical-stripe-idwriter
-                                          (comp
-                                           ;; [-1 1] -> color
-                                           (spectrum-dictionary spectrum)
+                                  :height 20
+                                  :font "10px Helvetica, Arial, sans-serif"
+                                  :color "#696969"}}
+                        (dom/div #js {:style #js {:position "absolute"
+                                                  :top 2
+                                                  :left -3}}
+                                 "-1")
+                        (dom/div #js {:style #js {:position "absolute"
+                                                  :left 0
+                                                  :bottom 0
+                                                  :width 1
+                                                  :height 7
+                                                  :backgroundColor "black"}})
+                        (dom/div #js {:style #js {:position "absolute"
+                                                  :top 2
+                                                  :left (-> width
+                                                            (/ 2)
+                                                            js/Math.round
+                                                            (- 2))}}
+                                 "0")
+                        (dom/div #js {:style #js {:position "absolute"
+                                                  :left (-> width
+                                                            (/ 2)
+                                                            js/Math.round)
+                                                  :bottom 0
+                                                  :width 1
+                                                  :height 7
+                                                  :backgroundColor "black"}})
+                        (dom/div #js {:style #js {:position "absolute"
+                                                  :top 2
+                                                  :right -2}}
+                                 "1")
+                        (dom/div #js {:style #js {:position "absolute"
+                                                  :right 0
+                                                  :bottom 0
+                                                  :width 1
+                                                  :height 7
+                                                  :backgroundColor "black"}}))
+               (dom/div #js {:style #js {:position "absolute"
+                                         :top 20}}
+                        (dom/div #js {:style
+                                      #js {:position "absolute"
+                                           :top canvash}}
+                                 (om/build color-knob-component
+                                           (:left spectrum)
+                                           {:init-state {:listener
+                                                         knob-actions}
+                                            :state {:target-width width}}))
+                        (dom/div #js {:style
+                                      #js {:position "absolute"
+                                           :top canvash}}
+                                 (om/build color-knob-component (:right
+                                                                 spectrum)
+                                           {:init-state {:listener
+                                                         knob-actions}
+                                            :state {:target-width width}}))
+                        (let [idwriter (cnv/solid-vertical-stripe-idwriter
+                                        (comp
+                                         ;; [-1 1] -> color
+                                         (spectrum-dictionary spectrum)
 
-                                           ;; col -> [-1 1]
-                                           #(dec (* 2 (/ % width)))))
-                                awaiting-fpaint (fn [p]
-                                                  {:f canvas-component
-                                                   :props spectrum
-                                                   :m {:state {:width width
-                                                               :height canvash}
-                                                       :opts {:paint p}}})]
-                            (if canvas-spec-transform
-                              (chan-genrender
-                               (fn [channel imgdata]
-                                 (-> (awaiting-fpaint (cnv/idwriter->painter
-                                                       (trace-rets idwriter
-                                                                   channel)))
-                                     (canvas-spec-transform imgdata)
-                                     spec/render))
-                               figure)
-                              (-> (awaiting-fpaint (cnv/idwriter->painter
-                                                    idwriter))
-                                  spec/render)))))))))
+                                         ;; col -> [-1 1]
+                                         #(dec (* 2 (/ % width)))))
+                              awaiting-fpaint (fn [p]
+                                                {:f canvas-component
+                                                 :props spectrum
+                                                 :m {:state {:width width
+                                                             :height canvash}
+                                                     :opts {:paint p}}})]
+                          (if canvas-spec-transform
+                            (chan-genrender
+                             (fn [channel imgdata]
+                               (-> (awaiting-fpaint (cnv/idwriter->painter
+                                                     (trace-rets idwriter
+                                                                 channel)))
+                                   (canvas-spec-transform imgdata)
+                                   spec/render))
+                             spectrum)
+                            (-> (awaiting-fpaint (cnv/idwriter->painter
+                                                  idwriter))
+                                spec/render))))))))
 
 (defn spectrum-picker-spec
   ([spectrum width]

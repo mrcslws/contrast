@@ -1,6 +1,7 @@
 (ns contrast.components.canvas
   (:require [cljs.core.async :refer [put! chan <!]]
             [contrast.common :refer [progress]]
+            [contrast.easing :as easing]
             [contrast.pixel :as pixel]
             [om.dom :as dom :include-macros true]
             [om.core :as om :include-macros true])
@@ -215,16 +216,24 @@
                 (aset (+ base 3) 255))))))
       imagedata)))
 
-(defn gradient-vertical-stripe-idwriter [col->topcolor col->bottomcolor]
+(defn gradient-vertical-stripe-idwriter [col->topcolor col->bottomcolor vertical-easing]
   (fn [imagedata]
     (let [width (.-width imagedata)
           height (.-height imagedata)
-          d (.-data imagedata)]
+          d (.-data imagedata)
+          cached-ps (js/Array. height)]
+
+      (easing/foreach-xy vertical-easing height
+                         (fn [y p]
+                           (aset cached-ps
+                                 (js/Math.round (* y height))
+                                 p)))
+
       (dotimes [col width]
         (let [[r1 g1 b1] (col->topcolor col)
               [r2 g2 b2] (col->bottomcolor col)]
           (dotimes [row height]
-            (let [p (/ row height)
+            (let [p (aget cached-ps row)
                   base (pixel/base width col row)]
               (doto d
                 (aset base (progress r1 r2 p))

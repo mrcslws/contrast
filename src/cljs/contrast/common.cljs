@@ -96,12 +96,12 @@
 (defn spectrum-dictionary [spectrum]
   (let [{:keys [left right]} spectrum
         dpos (- (:position right) (:position left))
-        [rs gs bs :as slopes] (map #(/ (- %2 %) dpos)
-                                   (:color left) (:color right))
-        [rzero gzero bzero] (map (fn [c s]
-                                   (- c (* s (:position right))))
-                                 (:color right)
-                                 slopes)]
+        [rs gs bs :as slopes] (mapv #(/ (- %2 %) dpos)
+                                    (:color left) (:color right))
+        [rzero gzero bzero] (mapv (fn [c s]
+                                    (- c (* s (:position right))))
+                                  (:color right)
+                                  slopes)]
     (fn [x]
       ;; TODO - consider js array for perf
       [(-> x (* rs) (+ rzero) js/Math.round)
@@ -114,30 +114,12 @@
       (+ start)
       js/Math.round))
 
-
-
 (defn trace-rets [f ch]
-  (fn
-    ([]
-       (let [r (f)]
-         (when ch
-           (put! ch r))
-         r))
-    ([a1]
-       (let [r (f a1)]
-         (when ch
-           (put! ch r))
-         r))
-    ([a1 a2]
-       (let [r (f a1 a2)]
-         (when ch
-           (put! ch r))
-         r))
-    ([a1 a2 & args]
-       (let [r (apply f a1 a2 args)]
-         (when ch
-           (put! ch r))
-         r))))
+  (fn [in]
+    (let [r (f in)]
+      (when ch
+        (put! ch r))
+      r)))
 
 (defn display-name [c]
   ((aget c "getDisplayName")))

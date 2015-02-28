@@ -1,6 +1,5 @@
 (ns contrast.components.row-probe
   (:require [cljs.core.async :refer [put! chan mult tap close! <!]]
-            [contrast.common :refer [wide-background-image]]
             [contrast.components.tracking-area :refer [tracking-area-component]]
             [contrast.state :as state]
             [om.core :as om :include-macros true]

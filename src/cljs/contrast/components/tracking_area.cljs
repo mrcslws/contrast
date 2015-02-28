@@ -39,11 +39,11 @@
   (let [;; Rather than calculating via DOM offsets, hit-test the quadrilateral
         ;; formed by the corners of the element.
         ;; The DOM offset approach doesn't work with CSS transforms.
-        [cc ta] (map (fn [refs]
-                       (map #(-> (om/get-node owner %) coordinate)
-                            refs))
-                     [["nw" "ne" "se" "sw"]
-                      ["tnw" "tne" "tse" "tsw"]])
+        [cc ta] (mapv (fn [refs]
+                        (map #(-> (om/get-node owner %) coordinate)
+                             refs))
+                      [["nw" "ne" "se" "sw"]
+                       ["tnw" "tne" "tse" "tsw"]])
         within-ta? (poly-contains? ta (.-clientX evt) (.-clientY evt))
         within-content? (poly-contains? cc (.-clientX evt) (.-clientY evt))
 
@@ -107,7 +107,7 @@
                                 ;; Include child element margins.
                                 ;; Otherwise they won't be included in cases
                                 ;; where underlap is 0.
-                                :overflow "auto"
+                                :overflow "hidden"
 
                                 :marginTop (- underlap-y)
                                 :marginBottom (- underlap-y)

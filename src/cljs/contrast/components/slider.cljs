@@ -53,6 +53,19 @@
       js/Math.round
       (str "%")))
 
+(defn slider-unchanging-background [_ owner]
+  (reify
+    om/IRender
+    (render [_]
+      (apply dom/div #js {:style #js {:position "absolute"
+                                      :zIndex 0
+                                      :height 4
+                                      :width "100%"}}
+             (wide-background-image "/images/SliderLeft.png" 8
+                                    "/images/SliderCenter.png"
+                                    "/images/SliderRight.png" 8
+                                    4)))))
+
 (defn slider-component-internal [{:keys [target schema]} owner]
   (reify
     om/IDisplayName
@@ -103,14 +116,7 @@
                                 :marginTop 26
                                 :marginBottom 4
                                 :height 4}}
-               (apply dom/div #js {:style #js {:position "absolute"
-                                               :zIndex 0
-                                               :height 4
-                                               :width "100%"}}
-                      (wide-background-image "/images/SliderLeft.png" 8
-                                             "/images/SliderCenter.png"
-                                             "/images/SliderRight.png" 8
-                                             4))
+               (om/build slider-unchanging-background nil)
                (dom/div #js {:style
                              #js {:position "absolute"
                                   :zIndex 1

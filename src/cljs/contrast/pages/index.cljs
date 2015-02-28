@@ -6,6 +6,7 @@
             [contrast.components.chan-handlers :refer [chan-genrender]]
             [contrast.components.color-exposer :refer [color-exposer-component]]
             [contrast.components.color-picker :refer [color-picker-component]]
+            [contrast.components.easing-picker :refer [easing-picker-component]]
             [contrast.components.eyedropper-zone :refer [eyedropper-zone-spec]]
             [contrast.components.fixed-table :refer [fixed-table-component]]
             [contrast.components.numvec-editable :refer [numvec-editable]]
@@ -141,13 +142,14 @@
                                       :schema {:key :color}}))))
           (section
            (heading "over a distance of:")
-           (indented (line (label-pixels (:transition-radius figure)) "."
+           (indented (line (label-pixels (get-in figure [:transition
+                                                         :radius])) "."
                            (slider {:position "absolute"
                                     :right 13
                                     :top -20
                                     :width 180}
-                                   figure
-                                   {:key :transition-radius
+                                   (:transition figure)
+                                   {:key :radius
                                     :min 0
                                     :max 250
                                     :str-format "%dpx"
@@ -186,20 +188,19 @@
                    (heading "Choose your wave:")
 
                    (indented
-                    (line "Create a " (name (:wave figure)) " wave.")
-                    (line (om/build wave-picker-component {:target figure
-                                                           :schema {:key :wave}
-                                                           :period (:period figure)}))
+                    (line "Create a " (name (get-in figure [:wave :form])) " wave.")
+                    (line (om/build wave-picker-component {:target (:wave figure)
+                                                           :schema {:key :form}}))
                     (line)
                     (line "On the left, use a period of")
                     (indented
-                     (line (label-pixels (:left-period figure))
+                     (line (label-pixels (get-in figure [:left-period :period]))
                            (slider {:width 180
                                     :position "absolute"
                                     :right 13
                                     :top -18}
-                                   figure
-                                   {:key :left-period
+                                   (:left-period figure)
+                                   {:key :period
                                     :min 1
                                     :max 1000
                                     :str-format "%dpx"
@@ -208,13 +209,13 @@
 
                     (line "On the right, use a period of"
                           (indented
-                           (line (label-pixels (:right-period figure))
+                           (line (label-pixels (get-in figure [:right-period :period]))
                                  (slider {:width 180
                                           :position "absolute"
                                           :right 13
                                           :top -18}
-                                         figure
-                                         {:key :right-period
+                                         (:right-period figure)
+                                         {:key :period
                                           :min 1
                                           :max 1000
                                           :str-format "%dpx"
@@ -228,12 +229,14 @@
                    (indented
                     (line "On top, use 0.")
                     (line "On bottom, use the wave's value.")
-                    (line "In between, ease between these values linearly.")))
+                    (line "In between, ease between these values linearly.")
+                    (line (om/build easing-picker-component (:vertical-easing
+                                                             figure)))))
 
                   (section
                    (heading "Translate to color:")
                    (indented (line (spectrum-picker-spec
-                                    figure 360
+                                    (:spectrum figure) 360
                                     (fn [spec imgdata]
                                       (eyedropper-zone-spec
                                        k {:key :selected-color} imgdata
@@ -279,10 +282,9 @@
                                      figure {:key :harmonics}))
 
            (indented
-            (line "Create a " (name (:wave figure)) " wave "
-                  (om/build wave-picker-component {:target figure
-                                                   :schema {:key :wave}
-                                                   :period (:period figure)}))
+            (line "Create a " (name (get-in figure [:wave :form])) " wave "
+                  (om/build wave-picker-component {:target (:wave figure)
+                                                   :schema {:key :form}}))
             (line "with amplitude "
                   (dom/input #js {:type "text" :value "1 / n"
                                   :style #js {:width 30
@@ -291,12 +293,12 @@
                   (dom/input #js {:type "text" :value "1 / n"
                                   :style #js {:width 30
                                               :textAlign "center"}})
-                  " * " (:period figure) " pixels."
+                  " * " (get-in figure [:frequency :period]) " pixels."
                   (slider {:position "absolute"
                            :right 13
                            :top -15
                            :width 180}
-                          figure
+                          (:frequency figure)
                           {:key :period
                            :min 1
                            :max 5000
@@ -306,7 +308,7 @@
           (section
            (heading "Use the sum of these waves to choose the color:")
            (indented (line (spectrum-picker-spec
-                            figure 360
+                            (:spectrum figure) 360
                             (fn [spec imgdata]
                               (eyedropper-zone-spec
                                k {:key :selected-color} imgdata
@@ -332,7 +334,8 @@
   (atom
    {"1-twosides" [(fn [] single-gradient) :single-sinusoidal-gradient]
     "2-sweep-grating" [(fn [] sweep-grating) :sweep-grating]
-    "3-harmonic-grating" [(fn [] harmonic-grating) :harmonic-grating]}))
+    "3-harmonic-grating" [(fn [] harmonic-grating) :harmonic-grating]
+    }))
 
 (defn workaround-component [_ _]
   (reify
@@ -422,6 +425,9 @@
     (.setAttribute el "id" "renderqueue-workaround")
     (js/document.body.appendChild el)))
 
+;; For sliders, editors, etc., it's useful to box its value in a dedicated data
+;; structure so that it doesn't have to rerender every time a sibling value
+;; changes.
 (defonce initialize-state
   (swap! state/app-state merge
          {:hood-open? false
@@ -434,29 +440,38 @@
                        :harmonic-grating {:color-inspect {:selected-color nil}}}
           :figures {:single-sinusoidal-gradient {:width 500
                                                  :height 256
-                                                 :transition-radius 250
+                                                 :transition {:radius 250}
                                                  :spectrum {:left {:color [0 0 0]
                                                                    :position -1}
                                                             :right {:color [255 255 255]
                                                                     :position 1}}}
                     :sweep-grating {:width 500
                                     :height 256
-                                    :contrast 10
-                                    :wave :sine
-                                    :left-period 300
-                                    :right-period 1
+                                    :wave {:form :sine}
+                                    :left-period {:period 90}
+                                    :right-period {:period 1}
+
+                                    :horizontal-easing {:x1 0.25
+                                                        :y1 0.50
+                                                        :x2 0.70
+                                                        :y2 0.70}
+                                    :vertical-easing {:x1 0.25
+                                                      :y1 0.50
+                                                      :x2 0.70
+                                                      :y2 0.70}
+
                                     :spectrum {:left {:color [136 136 136]
                                                       :position -1}
                                                :right {:color [170 170 170]
                                                        :position 1}}}
                     :harmonic-grating {:width 500
                                        :height 256
-                                       :period 100
+                                       :frequency {:period 100}
                                        :spectrum {:left {:color [136 136 136]
                                                          :position -1}
                                                   :right {:color [170 170 170]
                                                           :position 1}}
-                                       :wave :sine
+                                       :wave {:form :sine}
                                        :harmonic-magnitude "1 / n"
                                        :harmonics [1 3 5 7 9 11 13
                                                    15 17 19 21 23 25

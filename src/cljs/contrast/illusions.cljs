@@ -1,6 +1,7 @@
 (ns contrast.illusions
   (:require [contrast.common :refer [wavefn spectrum-dictionary]]
             [contrast.components.canvas :as cnv]
+            [contrast.easing :as easing]
             [contrast.pixel :as pixel]
             [om.core :as om :include-macros true])
   (:require-macros [contrast.macros :refer [dorange]]))
@@ -8,7 +9,7 @@
 ;; TODO decomplect vertical `progress->color` from horizontal
 (defn two-sides-idwriter [config interval-lookup]
   (fn [imagedata]
-    (let [{:keys [transition-radius]} config
+    (let [transition-radius (get-in config [:transition :radius])
           width (.-width imagedata)
           height (.-height imagedata)
           d (.-data imagedata)
@@ -95,15 +96,17 @@
     (fn [_] 0))
    (comp
     (spectrum-dictionary (:spectrum config))
-    (partial (get-method wavefn (:wave config)) (:wave config) 1)
-    (x->total-distance (:left-period config)
-                       (:right-period config)
-                       (:width config)))))
+    (partial (get-method wavefn (get-in config [:wave :form])) (get-in config [:wave :form]) 1)
+    (x->total-distance (get-in config [:left-period :period])
+                       (get-in config [:right-period :period])
+                       (:width config)))
+   (let [{:keys [x1 y1 x2 y2]} (:vertical-easing config)]
+     (easing/cubic-bezier-easing x1 y1 x2 y2))))
 
-(defn sums-of-harmonics [{:keys [harmonics period wave]}]
+(defn sums-of-harmonics [{:keys [harmonics frequency wave]}]
   (let [harray (clj->js harmonics)
         c (count harmonics)
-        wfn (partial (get-method wavefn wave) wave period)]
+        wfn (partial (get-method wavefn (:form wave)) wave (:period frequency))]
     (fn [x]
       (loop [s 0
              i 0]

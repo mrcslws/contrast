@@ -7,7 +7,9 @@
 
 (defn idwriter [config]
   (fn [imagedata]
-    (let [{:keys [wave harmonics period]} config
+    (let [{:keys [wave harmonics frequency]} config
+          period (:period frequency)
+          wave (:form wave)
           width (.-width imagedata)
           height (.-height imagedata)
           d (.-data imagedata)
