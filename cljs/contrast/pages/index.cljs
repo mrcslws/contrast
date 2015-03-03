@@ -335,8 +335,7 @@
   (atom
    {"1-twosides" [(fn [] single-gradient) :single-sinusoidal-gradient]
     "2-sweep-grating" [(fn [] sweep-grating) :sweep-grating]
-    "3-harmonic-grating" [(fn [] harmonic-grating) :harmonic-grating]
-    }))
+    "3-harmonic-grating" [(fn [] harmonic-grating) :harmonic-grating]}))
 
 (defn workaround-component [_ _]
   (reify

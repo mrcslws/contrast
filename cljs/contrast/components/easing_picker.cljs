@@ -1,7 +1,7 @@
 (ns contrast.components.easing-picker
   (:require [cljs.core.async :refer [<! put! chan alts! take!]]
             [com.mrcslws.om-spec :as spec]
-            [contrast.common :refer [progress spectrum-dictionary rgb->hexcode trace-rets]]
+            [contrast.common :refer [progress rgb->hexcode trace-rets]]
             [contrast.components.canvas :as cnv :refer [canvas-component]]
             [contrast.components.slider :refer [slider]]
             [contrast.easing :as easing]

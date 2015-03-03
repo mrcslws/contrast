@@ -1,10 +1,11 @@
 (ns contrast.components.spectrum-picker
   (:require [cljs.core.async :refer [<! put! chan alts! take!]]
             [com.mrcslws.om-spec :as spec]
-            [contrast.common :refer [progress spectrum-dictionary rgb->hexcode trace-rets]]
+            [contrast.common :refer [progress rgb->hexcode trace-rets]]
             [contrast.components.canvas :as cnv :refer [canvas-component]]
             [contrast.components.chan-handlers :refer [chan-genrender]]
             [contrast.components.color-picker :refer [color-picker-component]]
+            [contrast.spectrum :as spectrum]
             [goog.events :as events]
             [om.dom :as dom :include-macros true]
             [om.core :as om :include-macros true])
@@ -260,12 +261,10 @@
                                                          knob-actions}
                                             :state {:target-width width}}))
                         (let [idwriter (cnv/solid-vertical-stripe-idwriter
-                                        (comp
-                                         ;; [-1 1] -> color
-                                         (spectrum-dictionary spectrum)
-
-                                         ;; col -> [-1 1]
-                                         #(dec (* 2 (/ % width)))))
+                                        ;; col -> [-1 1]
+                                        #(dec (* 2 (/ % width)))
+                                        ;; [-1 1] -> color
+                                        (spectrum/dictionary spectrum))
                               awaiting-fpaint (fn [p]
                                                 {:f canvas-component
                                                  :props spectrum

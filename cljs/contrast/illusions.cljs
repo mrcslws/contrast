@@ -1,8 +1,9 @@
 (ns contrast.illusions
-  (:require [contrast.common :refer [wavefn spectrum-dictionary]]
+  (:require [contrast.common :refer [wavefn]]
             [contrast.components.canvas :as cnv]
             [contrast.easing :as easing]
             [contrast.pixel :as pixel]
+            [contrast.spectrum :as spectrum]
             [om.core :as om :include-macros true])
   (:require-macros [contrast.macros :refer [dorange]]))
 
@@ -91,15 +92,13 @@
 
 (defn sweep-grating-idwriter [config]
   (cnv/gradient-vertical-stripe-idwriter
+   (fn [_] 0) ;; TODO
    (comp
-    (spectrum-dictionary (:spectrum config))
-    (fn [_] 0))
-   (comp
-    (spectrum-dictionary (:spectrum config))
     (partial (get-method wavefn (get-in config [:wave :form])) (get-in config [:wave :form]) 1)
     (x->total-distance (get-in config [:left-period :period])
                        (get-in config [:right-period :period])
                        (:width config)))
+   (spectrum/dictionary (:spectrum config))
    (let [{:keys [x1 y1 x2 y2]} (:vertical-easing config)]
      (easing/cubic-bezier-easing x1 y1 x2 y2))))
 
@@ -121,6 +120,5 @@
                   (inc i))))))))
 
 (defn harmonic-grating-idwriter [config]
-  (cnv/solid-vertical-stripe-idwriter (comp
-                                       (spectrum-dictionary (:spectrum config))
-                                       (sums-of-harmonics config))))
+  (cnv/solid-vertical-stripe-idwriter (sums-of-harmonics config)
+                                      (spectrum/dictionary (:spectrum config))))

@@ -93,21 +93,6 @@
                        (* amplitude)
                        (+ c)))))
 
-(defn spectrum-dictionary [spectrum]
-  (let [{:keys [left right]} spectrum
-        dpos (- (:position right) (:position left))
-        [rs gs bs :as slopes] (mapv #(/ (- %2 %) dpos)
-                                    (:color left) (:color right))
-        [rzero gzero bzero] (mapv (fn [c s]
-                                    (- c (* s (:position right))))
-                                  (:color right)
-                                  slopes)]
-    (fn [x]
-      ;; TODO - consider js array for perf
-      [(-> x (* rs) (+ rzero) js/Math.round)
-       (-> x (* gs) (+ gzero) js/Math.round)
-       (-> x (* bs) (+ bzero) js/Math.round)])))
-
 (defn progress [start end p]
   (-> p
       (* (- end start))

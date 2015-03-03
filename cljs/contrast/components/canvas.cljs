@@ -3,6 +3,7 @@
             [contrast.common :refer [progress]]
             [contrast.easing :as easing]
             [contrast.pixel :as pixel]
+            [contrast.spectrum :as spectrum]
             [om.dom :as dom :include-macros true]
             [om.core :as om :include-macros true])
   (:require-macros [cljs.core.async.macros :refer [go-loop]]))
@@ -200,13 +201,16 @@
           id (.createImageData ctx (.-width cnv) (.-height cnv))]
       (.putImageData ctx (write-imagedata! id) 0 0))))
 
-(defn solid-vertical-stripe-idwriter [col->rgb]
+(defn solid-vertical-stripe-idwriter [col->x x->rgb]
   (fn [imagedata]
     (let [width (.-width imagedata)
           height (.-height imagedata)
           d (.-data imagedata)]
       (dotimes [col width]
-        (let [[r g b] (col->rgb col)]
+        (let [x (col->x col)
+              r (spectrum/x->r x->rgb x)
+              g (spectrum/x->g x->rgb x)
+              b (spectrum/x->b x->rgb x)]
           (dotimes [row height]
             (let [base (pixel/base width col row)]
               (doto d
@@ -216,7 +220,9 @@
                 (aset (+ base 3) 255))))))
       imagedata)))
 
-(defn gradient-vertical-stripe-idwriter [col->topcolor col->bottomcolor vertical-easing]
+
+(defn gradient-vertical-stripe-idwriter
+  [col->topx col->bottomx x->rgb vertical-easing]
   (fn [imagedata]
     (let [width (.-width imagedata)
           height (.-height imagedata)
@@ -230,8 +236,15 @@
                                  p)))
 
       (dotimes [col width]
-        (let [[r1 g1 b1] (col->topcolor col)
-              [r2 g2 b2] (col->bottomcolor col)]
+        (let [topx (col->topx col)
+              r1 (spectrum/x->r x->rgb topx)
+              g1 (spectrum/x->g x->rgb topx)
+              b1 (spectrum/x->b x->rgb topx)
+
+              botx (col->bottomx col)
+              r2 (spectrum/x->r x->rgb botx)
+              g2 (spectrum/x->g x->rgb botx)
+              b2 (spectrum/x->b x->rgb botx)]
           (dotimes [row height]
             (let [p (aget cached-ps row)
                   base (pixel/base width col row)]

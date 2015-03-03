@@ -61,9 +61,9 @@
                                       :zIndex 0
                                       :height 4
                                       :width "100%"}}
-             (wide-background-image "/images/SliderLeft.png" 8
-                                    "/images/SliderCenter.png"
-                                    "/images/SliderRight.png" 8
+             (wide-background-image "images/SliderLeft.png" 8
+                                    "images/SliderCenter.png"
+                                    "images/SliderRight.png" 8
                                     4)))))
 
 (defn slider-component-internal [{:keys [target schema]} owner]
@@ -123,7 +123,7 @@
                                   :left (slider-left locked-value schema)}}
                         (dom/div #js {:style #js {:position "absolute"
                                                   :left (- (quot wmarker 2))}}
-                                 (background-image "/images/SliderMarker.png"
+                                 (background-image "images/SliderMarker.png"
                                                    wmarker 4)))
                (dom/div #js {:style
                              #js {:position "absolute"
@@ -136,7 +136,7 @@
                                                      schema)}}
                         (dom/div #js {:style #js {:position "absolute"
                                                   :left (- (quot wknob 2))}}
-                                 (background-image "/images/SliderKnob.png"
+                                 (background-image "images/SliderKnob.png"
                                                    wknob 13))
                         (dom/div
                          #js {:style
