@@ -326,7 +326,7 @@
                   (om/build wave-display-component
                             (select-keys figure
                                          [:width :wave
-                                          :harmonics :period]))))))))
+                                          :harmonics :frequency]))))))))
 
 
 
