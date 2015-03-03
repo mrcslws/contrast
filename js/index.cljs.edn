@@ -1,0 +1,2 @@
+{:require [contrast.pages.index contrast.page-triggers]
+ :init-fns [contrast.page-triggers/reload-code]}

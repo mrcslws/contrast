@@ -100,6 +100,7 @@
                                      :opts {:subscriber channel}}}])))
              imgdata))))
 
+
 (defn single-gradient [k owner]
   (reify
     om/IDisplayName
