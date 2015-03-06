@@ -74,7 +74,10 @@
                                   :left (knobpos->left
                                          (:position knob) target-width)}}
                  (dom/div #js {:onMouseDown (fn [e]
-                                              (.persist e)
+                                              ;; TODO add extern for
+                                              ;; SyntheticEvent.persist
+                                              ;; (.persist e)
+                                              (.call (aget e "persist") e)
                                               (.preventDefault e)
                                               (put! mousedown e)
                                               nil)

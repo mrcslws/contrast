@@ -136,7 +136,10 @@
                                 :height "100%"
                                 :width "100%"}}
                (dom/div #js {:onMouseDown (fn [e]
-                                            (.persist e)
+                                            ;; TODO add extern for
+                                            ;; SyntheticEvent.persist
+                                            ;; (.persist e)
+                                            (.call (aget e "persist") e)
                                             (.preventDefault e)
                                             (put! mousedown e)
                                             nil)
