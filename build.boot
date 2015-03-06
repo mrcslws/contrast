@@ -7,7 +7,11 @@
                  [pandeiro/boot-http "0.3.0" :scope "test"]
 
                  [org.clojure/core.async "0.1.346.0-17112a-alpha"]
-                 [org.omcljs/om "0.8.8"]])
+                 [org.omcljs/om "0.8.8" :exclusions [cljsjs/react]]
+
+                 ;; Requires a version with change
+                 ;; https://github.com/mrcslws/packages/commit/76369523d3040ae05347b3863ef84dfb3f49b5a0
+                 [cljsjs/react "0.12.2-7"]])
 
 (require
  '[adzerk.boot-cljs :refer [cljs]]

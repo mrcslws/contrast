@@ -9,7 +9,11 @@
             [contrast.pixel :as pixel]
             [contrast.progress :as progress]
             [om.dom :as dom :include-macros true]
-            [om.core :as om :include-macros true])
+            [om.core :as om :include-macros true]
+
+            ;; Until Om packages change
+            ;; https://github.com/mrcslws/packages/commit/76369523d3040ae05347b3863ef84dfb3f49b5a0
+            [cljsjs.react])
   (:require-macros [cljs.core.async.macros :refer [go-loop alt!]]))
 
 (defn x-extractor [xorigin yorigin]
@@ -138,8 +142,8 @@
                (dom/div #js {:onMouseDown (fn [e]
                                             ;; TODO add extern for
                                             ;; SyntheticEvent.persist
-                                            ;; (.persist e)
-                                            (.call (aget e "persist") e)
+                                            (.persist e)
+                                            ;; (.call (aget e "persist") e)
                                             (.preventDefault e)
                                             (put! mousedown e)
                                             nil)
