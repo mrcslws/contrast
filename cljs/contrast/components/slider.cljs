@@ -4,6 +4,7 @@
             [contrast.common :refer [wide-background-image background-image]]
             [contrast.components.tracking-area :refer [tracking-area-component]]
             [contrast.dom :as domh]
+            [contrast.progress :as progress]
             [goog.string :as gstring]
             [goog.string.format]
             [om.dom :as dom :include-macros true]
@@ -11,6 +12,7 @@
   (:require-macros [cljs.core.async.macros :refer [go-loop]]))
 
 (def wknob 13)
+(def hknob 13)
 (def wmarker 8)
 (def wlabel 100)
 (def bounce-duration 500)
@@ -48,10 +50,8 @@
 
 (defn slider-left [value schema]
   (-> value
-      (/ (- (:max schema) (:min schema)))
-      (* 100)
-      js/Math.round
-      (str "%")))
+      (progress/n->p (:min schema) (:max schema))
+      progress/percent))
 
 (defn slider-unchanging-background [_ owner]
   (reify
@@ -121,23 +121,21 @@
                              #js {:position "absolute"
                                   :zIndex 1
                                   :left (slider-left locked-value schema)}}
-                        (dom/div #js {:style #js {:position "absolute"
-                                                  :left (- (quot wmarker 2))}}
-                                 (background-image "images/SliderMarker.png"
-                                                   wmarker 4)))
+                        (background-image "images/SliderMarker.png"
+                                          wmarker 4 (- (quot wmarker 2)) 0))
                (dom/div #js {:style
                              #js {:position "absolute"
                                   :zIndex 2
                                   ;; I apologize for the magic number.
-                                  :top (- -4
+                                  :top (- 2
                                           (knob-yoffset bounce-start))
                                   :left (slider-left (get target
                                                           (:key schema))
                                                      schema)}}
-                        (dom/div #js {:style #js {:position "absolute"
-                                                  :left (- (quot wknob 2))}}
-                                 (background-image "images/SliderKnob.png"
-                                                   wknob 13))
+                        (background-image "images/SliderKnob.png"
+                                          wknob hknob
+                                          (- (quot wknob 2))
+                                          (- (quot hknob 2)))
                         (dom/div
                          #js {:style
                               #js {:position "relative"

@@ -9,13 +9,19 @@
 (defn css-url [url]
   (str "url(" url ")"))
 
-(defn background-image [img w h]
-  (dom/div #js {:style #js {:position "absolute"
-                            :backgroundSize "100% 100%"
-                            :backgroundRepeat "no-repeat"
-                            :backgroundImage (css-url img)
-                            :width w
-                            :height h}}))
+
+(defn background-image
+  ([img w h]
+     (background-image img w h 0 0))
+  ([img w h l t]
+     (dom/div #js {:style #js {:position "absolute"
+                               :backgroundSize "100% 100%"
+                               :backgroundRepeat "no-repeat"
+                               :backgroundImage (css-url img)
+                               :width w
+                               :height h
+                               :left l
+                               :top t}})))
 
 (defn wide-background-image [left leftw center right rightw h]
   (let [common {:position "absolute"
@@ -83,21 +89,25 @@
     1
     -1))
 
-;; TODO everything about "amplitude" just feels weird.
-(defn wavey->ycoord [wavey amplitude height]
-  ;; For example, if the height is 10, then a range might be
-  ;; between 0 and 9, centered on 4.5.
-  (let [c (-> height dec (/ 2))]
-    (js/Math.round (-> wavey
-                       - ;; Convert to HTML y.
-                       (* amplitude)
-                       (+ c)))))
-
-(defn progress [start end p]
-  (-> p
-      (* (- end start))
-      (+ start)
-      js/Math.round))
+(defn harmonic-adder [{:keys [harmonics frequency wave]}]
+  (let [harray (clj->js harmonics)
+        c (count harmonics)
+        period (:period frequency)
+        wfn (partial (get-method wavefn (:form wave)) wave)]
+    (fn add
+      ([x]
+         (add x identity))
+      ([x fsummand]
+         (loop [s 0
+                i 0]
+           (if-not (< i c)
+             s
+             (let [h (aget harray i)
+                   y (-> (wfn (/ period h) x)
+                         (/ h))]
+               (fsummand y)
+               (recur (+ y s)
+                      (inc i)))))))))
 
 (defn trace-rets [f ch]
   (fn [in]

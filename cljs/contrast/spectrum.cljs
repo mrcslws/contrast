@@ -26,3 +26,12 @@
                                   (:color right)
                                   slopes)]
     (SpectrumDictionary. rzero gzero bzero rs gs bs)))
+
+(defn x->cssrgb [dict x]
+  (str "rgb("
+       (x->r dict x)
+       ","
+       (x->g dict x)
+       ","
+       (x->b dict x)
+       ")"))

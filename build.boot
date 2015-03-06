@@ -23,13 +23,14 @@
 ;; Example commands. They'll put a file-copy-deployable website in /target.
 ;; =============================================================================
 
-;; boot serve -d target/ watch speak contrast-reload cljs -sO :none
+;; boot serve -d target/ watch speak contrast-reload cljs-repl cljs -sO :none
 (deftask dev
   []
   (comp (serve "-d" "target/")
         (watch)
         (speak)
         (contrast-reload)
+        (cljs-repl)
         (cljs :optimizations :none :source-map true)))
 
 ;; boot serve -d target/ watch speak cljs -sO :advanced

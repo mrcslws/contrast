@@ -1,8 +1,8 @@
 (ns contrast.components.canvas
   (:require [cljs.core.async :refer [put! chan <!]]
-            [contrast.common :refer [progress]]
             [contrast.easing :as easing]
             [contrast.pixel :as pixel]
+            [contrast.progress :as progress]
             [contrast.spectrum :as spectrum]
             [om.dom :as dom :include-macros true]
             [om.core :as om :include-macros true])
@@ -249,8 +249,8 @@
             (let [p (aget cached-ps row)
                   base (pixel/base width col row)]
               (doto d
-                (aset base (progress r1 r2 p))
-                (aset (+ base 1) (progress g1 g2 p))
-                (aset (+ base 2) (progress b1 b2 p))
+                (aset base (progress/p->int p r1 r2))
+                (aset (+ base 1) (progress/p->int p g1 g2))
+                (aset (+ base 2) (progress/p->int p b1 b2))
                 (aset (+ base 3) 255))))))
       imagedata)))

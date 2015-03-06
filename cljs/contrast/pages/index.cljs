@@ -8,6 +8,7 @@
             [contrast.components.color-picker :refer [color-picker-component]]
             [contrast.components.easing-picker :refer [easing-picker-component]]
             [contrast.components.eyedropper-zone :refer [eyedropper-zone-spec]]
+            [contrast.components.feature-magnet :refer [bezier-feature-magnet-spec]]
             [contrast.components.fixed-table :refer [fixed-table-component]]
             [contrast.components.numvec-editable :refer [numvec-editable]]
             [contrast.components.row-display :refer [row-display-component]]
@@ -21,10 +22,13 @@
             [contrast.illusions :as illusions]
             [contrast.instrumentation :as instrumentation]
             [contrast.page-triggers :as page-triggers]
+            [contrast.spectrum :as spectrum] ;; TODO necessary?
             [contrast.state :as state]
             [om.dom :as dom :include-macros true]
             [om.core :as om :include-macros true])
   (:require-macros [cljs.core.async.macros :refer [go-loop]]))
+
+(enable-console-print!)
 
 ;; TODO switch away from "radius". "width" or "diameter" are better.
 ;; TODO dithering
@@ -186,7 +190,19 @@
                    canary))
                  (algorithm
                   (section
-                   (heading "Choose your wave:")
+                   (heading "Choose a spectrum.")
+                   (indented (line (spectrum-picker-spec
+                                    (:spectrum figure) 360
+                                    (fn [spec imgdata]
+                                      (eyedropper-zone-spec
+                                       k {:key :selected-color} imgdata
+                                       [{:f color-exposer-component
+                                         :props k
+                                         :m {:state {:imagedata imgdata}}
+                                         :children [spec]}]))))))
+
+                  (section
+                   (heading "Configure a wave.")
 
                    (indented
                     (line "Create a " (name (get-in figure [:wave :form])) " wave.")
@@ -226,25 +242,52 @@
                     (line "In between, ease between these periods linearly.")))
 
                   (section
-                   (heading "Use your wave:")
+                   (heading "Now use them.")
                    (indented
-                    (line "On top, use 0.")
-                    (line "On bottom, use the wave's value.")
-                    (line "In between, ease between these values linearly.")
-                    (line (om/build easing-picker-component (:vertical-easing
-                                                             figure)))))
+                    (let [w 200
+                          h 200]
+                      (line
+                       (om/build easing-picker-component (:vertical-easing
+                                                          figure)
+                                 {:state {:w w
+                                          :h h
 
-                  (section
-                   (heading "Translate to color:")
-                   (indented (line (spectrum-picker-spec
-                                    (:spectrum figure) 360
-                                    (fn [spec imgdata]
-                                      (eyedropper-zone-spec
-                                       k {:key :selected-color} imgdata
-                                       [{:f color-exposer-component
-                                         :props k
-                                         :m {:state {:imagedata imgdata}}
-                                         :children [spec]}]))))))))))))
+                                          ;; Plot x axis along left side.
+                                          :xorigin :top
+                                          :yorigin :left}})
+                       (apply dom/div #js {:style #js {:verticalAlign "top"
+
+                                                       ;; TODO Mirroring the easing picker
+                                                       :marginTop 10
+
+                                                       :marginLeft 30
+                                                       :display "inline-block"
+                                                       :position "relative"}}
+                              (let [s (spectrum/dictionary (:spectrum figure))]
+                                (map (fn [yseek]
+                                       (spec/render
+                                        (bezier-feature-magnet-spec
+                                         (:vertical-easing figure)
+                                         yseek
+                                         (fn [x] (-> x (* h) js/Math.round (- 2)))
+                                         (constantly 0)
+                                         [(dom/div
+                                           #js {:style
+                                                #js {:position "absolute"
+                                                     :left 0
+                                                     :height 5
+                                                     :width 6
+                                                     :backgroundColor (spectrum/x->cssrgb
+                                                                       s (* yseek -1))}})
+                                          (dom/div
+                                           #js {:style
+                                                #js {:position "absolute"
+                                                     :left 6
+                                                     :height 5
+                                                     :width 6
+                                                     :backgroundColor (spectrum/x->cssrgb
+                                                                       s yseek)}})])))
+                                     [0 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1])))))))))))))
 
 
 (defn harmonic-grating [k owner]
@@ -451,14 +494,14 @@
                                     :left-period {:period 90}
                                     :right-period {:period 1}
 
-                                    :horizontal-easing {:x1 0.25
-                                                        :y1 0.50
-                                                        :x2 0.70
-                                                        :y2 0.70}
-                                    :vertical-easing {:x1 0.25
-                                                      :y1 0.50
-                                                      :x2 0.70
-                                                      :y2 0.70}
+                                    :horizontal-easing {:p1 {:x 0.25
+                                                             :y 0.50}
+                                                        :p2 {:x 0.70
+                                                             :y 0.70}}
+                                    :vertical-easing {:p1 {:x 0.25
+                                                           :y 0.50}
+                                                      :p2 {:x 0.70
+                                                           :y 0.70}}
 
                                     :spectrum {:left {:color [136 136 136]
                                                       :position -1}

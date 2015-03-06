@@ -1,28 +1,40 @@
 (ns contrast.components.wave-picker
-  (:require [contrast.common :refer [wavefn wavey->ycoord]]
+  (:require [contrast.common :refer [wavefn]]
             [contrast.components.canvas :as cnv]
             [contrast.pixel :as pixel]
+            [contrast.progress :as progress]
             [om.dom :as dom :include-macros true]
             [om.core :as om :include-macros true]))
 
 (defn idwriter [wave shift vlinefreq]
-  (fn [imagedata]
+  (fn write-imagedata! [imagedata]
     (let [width (.-width imagedata)
           height (.-height imagedata)
           d (.-data imagedata)
           period (/ width 2)
-          amplitude (/ (dec height) 2)
           cshift (* shift period)
-          wfn (partial (get-method wavefn wave) wave period)]
+
+          orient (progress/orient :bottom)
+          wfn (partial (get-method wavefn wave) wave period)
+          col->row (fn [col]
+                     (-> col
+                         (+ cshift)
+                         wfn
+                         (progress/n->p -1 1)
+                         orient
+                         (progress/p->int 0 (dec height))))]
       (dotimes [col width]
-        (let [row (wavey->ycoord (wfn (+ cshift col))
-                                 amplitude height)
-              base (pixel/base width col row)]
-          (doto d
-            (aset (+ base 3) 255))))
+        (doto d
+          (aset (+ (pixel/base width col
+                               (col->row col))
+                   3)
+                255)))
       (when (pos? vlinefreq)
         (loop [i 0]
-          (let [col (js/Math.round(+ cshift (* i (/ period vlinefreq))))]
+          (let [col (-> i
+                        (* (/ period vlinefreq))
+                        (+ cshift)
+                        js/Math.round)]
             (when (< col width)
               (when (>= col 0)
                 (dotimes [row height]

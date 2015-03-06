@@ -10,6 +10,7 @@
 
 (defprotocol PEasingBezier
   (x->y [this x])
+  (y->x [this y])
 
   ;; It's simple to implement this on top of x->y, but that will duplicate a
   ;; lot of searching. Give implementors the chance to use a faster approach.
@@ -72,8 +73,6 @@
                          (/ step 2))))))]
     t))
 
-
-
 (deftype CubicBezierEasing [xdim ydim]
   PBezier
   (t->x [_ t]
@@ -85,6 +84,9 @@
   (x->y [this x]
     (t->y this
           (x->t xdim x x 1e-7)))
+  (y->x [this y]
+    (t->x this
+          (x->t ydim y 0.5 1e-7)))
   (foreach-xy [this xcount f]
     (let [step (/ 1 xcount)
           epsilon (/ step 200)]

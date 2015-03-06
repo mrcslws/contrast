@@ -1,49 +1,15 @@
 (ns contrast.components.spectrum-picker
-  (:require [cljs.core.async :refer [<! put! chan alts! take!]]
+  (:require [cljs.core.async :refer [<! put! chan]]
             [com.mrcslws.om-spec :as spec]
-            [contrast.common :refer [progress rgb->hexcode trace-rets]]
+            [contrast.common :refer [rgb->hexcode trace-rets]]
             [contrast.components.canvas :as cnv :refer [canvas-component]]
             [contrast.components.chan-handlers :refer [chan-genrender]]
             [contrast.components.color-picker :refer [color-picker-component]]
+            [contrast.drag :as drag]
             [contrast.spectrum :as spectrum]
-            [goog.events :as events]
             [om.dom :as dom :include-macros true]
             [om.core :as om :include-macros true])
-  (:require-macros [cljs.core.async.macros :refer [go-loop alt!]]
-                   [contrast.macros :refer [drain!]]))
-
-(defn listen [el type]
-  (let [port (chan)
-        eventkey (events/listen el type #(put! port %1))]
-    [eventkey port]))
-
-(defn watch [mousedown start progress finished coalesce-timeout]
-  (go-loop []
-    (when-let [downevt (<! mousedown)]
-      (when (= (.-button downevt) 0)
-        (put! start :started)
-
-        (let [[kmousemove moves] (listen js/window "mousemove")
-              [kmouseup ups] (listen js/window "mouseup")]
-          (loop []
-            (let [[evt port] (alts! [moves ups])
-                  d [(- (.-clientX evt)
-                        (.-clientX downevt))
-                     (- (.-clientY evt)
-                        (.-clientY downevt))]]
-              (if (= port moves)
-                (do
-                  (put! progress d)
-                  (recur))
-                (do
-                  (put! finished d)
-                  (events/unlistenByKey kmousemove)
-                  (events/unlistenByKey kmouseup))))))
-
-        ;; In obscure cases (e.g. javascript breakpoints)
-        ;; there are stale mousedowns sitting in the queue.
-        (drain! mousedown))
-      (recur))))
+  (:require-macros [cljs.core.async.macros :refer [go-loop]]))
 
 (defn knobpos->left [v w]
   (-> v
@@ -71,7 +37,7 @@
             started (chan)
             progress (chan)
             finished (chan)]
-        (watch mousedown started progress finished nil)
+        (drag/watch mousedown started progress finished)
 
         (go-loop []
           (when-let [_ (<! started)]
@@ -199,6 +165,7 @@
       (dom/div #js {:style #js {:position "relative"
                                 :width width
                                 :marginRight 12
+                                :marginBottom 20
                                 :height (+ canvash 30)}}
                (dom/div #js {:style
                              #js {:position "absolute"

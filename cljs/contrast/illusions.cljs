@@ -1,5 +1,5 @@
 (ns contrast.illusions
-  (:require [contrast.common :refer [wavefn]]
+  (:require [contrast.common :refer [wavefn harmonic-adder]]
             [contrast.components.canvas :as cnv]
             [contrast.easing :as easing]
             [contrast.pixel :as pixel]
@@ -92,33 +92,16 @@
 
 (defn sweep-grating-idwriter [config]
   (cnv/gradient-vertical-stripe-idwriter
-   (fn [_] 0) ;; TODO
+   (constantly 0)
    (comp
     (partial (get-method wavefn (get-in config [:wave :form])) (get-in config [:wave :form]) 1)
     (x->total-distance (get-in config [:left-period :period])
                        (get-in config [:right-period :period])
                        (:width config)))
    (spectrum/dictionary (:spectrum config))
-   (let [{:keys [x1 y1 x2 y2]} (:vertical-easing config)]
-     (easing/cubic-bezier-easing x1 y1 x2 y2))))
-
-(defn sums-of-harmonics [{:keys [harmonics frequency wave]}]
-  (let [harray (clj->js harmonics)
-        c (count harmonics)
-        wfn (partial (get-method wavefn (:form wave)) wave (:period frequency))]
-    (fn [x]
-      (loop [s 0
-             i 0]
-        (if-not (< i c)
-          s
-          (let [h (aget harray i)]
-              (recur (-> x
-                      (* h)
-                      wfn
-                      (* (/ 1 h))
-                      (+ s))
-                  (inc i))))))))
+   (let [{:keys [p1 p2]} (:vertical-easing config)]
+     (easing/cubic-bezier-easing (:x p1) (:y p1) (:x p2) (:y p2)))))
 
 (defn harmonic-grating-idwriter [config]
-  (cnv/solid-vertical-stripe-idwriter (sums-of-harmonics config)
+  (cnv/solid-vertical-stripe-idwriter (harmonic-adder config)
                                       (spectrum/dictionary (:spectrum config))))

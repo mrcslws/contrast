@@ -6,7 +6,7 @@
   (:require-macros [cljs.core.async.macros :refer [go-loop alt!]]))
 
 (defn drop-grandchildren [children]
-  (mapv #(dissoc % :children) children))
+  (mapv #(cond-> % (associative? %) (dissoc % :children)) children))
 
 (defn children-host-component [_ owner]
   (reify
@@ -60,18 +60,26 @@
             (loop [i 0
                    sofar []]
               (if (< i (count children))
-                (let [{:keys [f props m children]} (nth children i)]
-                  (recur (inc i)
-                         (conj sofar
-                               (om/build f props
-                                         (-> m
-                                             (assoc-in [:state ::path]
-                                                       (conj path i))
-                                             (assoc-in [:state ::channels]
-                                                       channels)
-                                             (assoc-in [:init-state
-                                                        ::initial-children]
-                                                       children))))))
+                (let [child (nth children i)]
+                    (recur (inc i)
+                           (conj sofar
+                                 (if (associative? child)
+                                   (let [{:keys [f props m children]} child]
+                                     (om/build f props
+                                               (-> m
+                                                   (assoc-in [:state ::path]
+                                                             (conj path i))
+                                                   (assoc-in [:state ::channels]
+                                                             channels)
+                                                   (assoc-in [:init-state
+                                                              ::initial-children]
+                                                             children))))
+                                   (do
+                                     (when (aget child "_isReactElement")
+                                       (js/console.warn
+                                        (str "Passing a ReactElement as a child "
+                                             "will force a render.")))
+                                     child)))))
                 sofar))]
         (if remaining
           (apply dom/div nil all)
