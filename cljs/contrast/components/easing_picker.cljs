@@ -4,6 +4,7 @@
             [contrast.common :refer [background-image]]
             [contrast.components.canvas :as cnv]
             [contrast.components.slider :refer [slider]]
+            [contrast.dom :as domh]
             [contrast.drag :as drag]
             [contrast.easing :as easing]
             [contrast.pixel :as pixel]
@@ -16,14 +17,12 @@
             [cljsjs.react])
   (:require-macros [cljs.core.async.macros :refer [go-loop alt!]]))
 
-(enable-console-print!)
-
 (defn lines-painter [easing x+ y+]
   (let [[xy->plot-xp xy->plot-yp] (progress/xy->plotxy x+ y+)
         {:keys [p1 p2]} easing
         {x1 :x y1 :y} p1
         {x2 :x y2 :y} p2]
-    (fn [cnv]
+    (fn paint-lines [cnv]
       (let [ctx (.getContext cnv "2d")
             w (.-width cnv)
             h (.-height cnv)]
@@ -46,7 +45,7 @@
                        (progress/p->int 0 (dec h))))
           (.stroke))))))
 
-(defn idwriter [easing x+ y+]
+(defn easing-idwriter [easing x+ y+]
   (let [[xy->plot-xp xy->plot-yp] (progress/xy->plotxy x+ y+)]
    (fn write-imagedata! [imgdata]
      (let [width (.-width imgdata)
@@ -78,35 +77,26 @@
             finished (chan)]
         (drag/watch mousedown started progress finished)
 
-        ;; TODO - boundaries.
-        ;; TODO - it's silly that I'm working with deltas.
-        ;; My API is making me do extra work. Deltas make sense
-        ;; for panning, not for repositioning an object.
         (go-loop []
           (when-let [_ (<! started)]
-            (let [{:keys [x+ y+]} (om/get-state owner)
-                  {startxp :x startyp :y} @point
-
-                  [plot-xy->xp plot-xy->yp] (progress/plotxy->xy x+ y+)
-
-                  ;; This won't be necessary when I get away from deltas.
-                  [xy->plot-xp xy->plot-yp] (progress/xy->plotxy x+ y+)
-                  plot-xp-start (xy->plot-xp startxp startyp)
-                  plot-yp-start (xy->plot-yp startxp startyp)]
+            (let [{:keys [x+ y+ w h]} (om/get-state owner)
+                  [plot-xy->xp plot-xy->yp] (progress/plotxy->xy x+ y+)]
               (loop []
                 (alt! progress
-                      ([[dxpx dypx]]
-                         (let [container (om/get-node owner "container")
-                               plot-dxp (progress/n->p dxpx
-                                                       0 (.-offsetWidth container))
-                               plot-dyp (progress/n->p dypx
-                                                       0 (.-offsetHeight container))
-                               plot-xp (+ plot-xp-start plot-dxp)
-                               plot-yp (+ plot-yp-start plot-dyp)]
+                      ([[evt]]
+                         (let [topleft (om/get-node owner "topleft")
+                               {plot-xpx :x plot-ypx :y} (domh/offset-from
+                                                          evt topleft)
+                               plot-xp (progress/n->p plot-xpx 0 w)
+                               plot-yp (progress/n->p plot-ypx 0 h)]
                            (om/transact! point
                                          #(assoc %
-                                            :x (plot-xy->xp plot-xp plot-yp)
-                                            :y (plot-xy->yp plot-xp plot-yp))))
+                                            :x (-> (plot-xy->xp plot-xp plot-yp)
+                                                   (max 0)
+                                                   (min 1))
+                                            :y (-> (plot-xy->yp plot-xp plot-yp)
+                                                   (max 0)
+                                                   (min 1)))))
                          (recur))
 
                       finished
@@ -118,23 +108,27 @@
 
     om/IRenderState
     (render-state [_ {:keys [mousedown x+ y+]}]
-      (dom/div #js {:ref "container"
-                    :style #js {:display "inline-block"
-                                :height "100%"
-                                :width "100%"}}
-               (let [[plot-xp plot-yp] (progress/xy->plotxy
-                                        (:x point) (:y point)
-                                        x+ y+)]
-                 (dom/div #js {:onMouseDown (fn [e]
-                                              (.persist e)
-                                              (.preventDefault e)
-                                              (put! mousedown e)
-                                              nil)
-                               :style #js {:cursor "pointer"
-                                           :position "absolute"
-                                           :left (progress/percent plot-xp)
-                                           :top (progress/percent plot-yp)}}
-                          (background-image "images/SliderKnob.png" 13 13 -6 -6)))))))
+      (dom/div
+       nil
+       (dom/div #js {:ref "topleft"
+                     :style #js {:position "absolute"
+                                 :width 0
+                                 :height 0
+                                 :top 0
+                                 :left 0}})
+       (let [[plot-xp plot-yp] (progress/xy->plotxy
+                                (:x point) (:y point)
+                                x+ y+)]
+         (dom/div #js {:onMouseDown (fn [e]
+                                      (.persist e)
+                                      (.preventDefault e)
+                                      (put! mousedown e)
+                                      nil)
+                       :style #js {:cursor "pointer"
+                                   :position "absolute"
+                                   :left (progress/percent plot-xp)
+                                   :top (progress/percent plot-yp)}}
+                  (background-image "images/SliderKnob.png" 13 13 -6 -6)))))))
 
 (defn easing-picker-component [easing owner]
   (reify
@@ -218,10 +212,14 @@
                                          :zIndex 2}}
                         (om/build point-picker-component (:p1 easing)
                                   {:state {:x+ x+
-                                           :y+ y+}})
+                                           :y+ y+
+                                           :w w
+                                           :h h}})
                         (om/build point-picker-component (:p2 easing)
                                   {:state {:x+ x+
-                                           :y+ y+}}))
+                                           :y+ y+
+                                           :w w
+                                           :h h}}))
 
                (dom/div #js {:style #js {:position "absolute"
                                          :width "100%"
@@ -233,4 +231,4 @@
                                          :zIndex 0}}
                         (cnv/canvas easing w h
                                     (cnv/idwriter->painter
-                                     (idwriter easing x+ y+))))))))
+                                     (easing-idwriter easing x+ y+))))))))

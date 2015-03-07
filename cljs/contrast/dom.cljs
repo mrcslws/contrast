@@ -34,10 +34,40 @@
          (>= (.-pageY evt) top)
          (< (.-pageY evt) bottom))))
 
+(defn nonzero-number? [v]
+  (if (and (number? v)
+           (not (zero? v)))
+    v
+    false))
+
+(defn page-x [evt]
+  (or (.-pageX evt)
+      (let [doc (.-documentElement js/document)
+            body (.-body js/document)]
+        (+ (.-clientX evt)
+           (- (or (nonzero-number? (and doc (.-scrollLeft doc)))
+                  (nonzero-number? (and body (.-scrollLeft body)))
+                  0)
+              (or (nonzero-number? (and doc (.-clientLeft doc)))
+                  (nonzero-number? (and body (.-clientLeft body)))
+                  0))))))
+
+(defn page-y [evt]
+  (or (.-pageY evt)
+      (let [doc js/document.documentElement
+            body js/document.body]
+        (+ (.-clientY evt)
+           (- (or (nonzero-number? (and doc (.-scrollTop doc)))
+                  (nonzero-number? (and body (.-scrollTop body)))
+                  0)
+              (or (nonzero-number? (and doc (.-clientTop doc)))
+                  (nonzero-number? (and body (.-clientTop body)))
+                  0))))))
+
 (defn offset-from [evt el]
   (let [[left top right bottom] (get-bounding-page-rect el)]
-    {:x (- (.-pageX evt) left)
-     :y (- (.-pageY evt) top)}))
+    {:x (- (page-x evt) left)
+     :y (- (page-y evt) top)}))
 
 (defn offset-from-target [evt]
   (offset-from evt (-> evt .-target)))

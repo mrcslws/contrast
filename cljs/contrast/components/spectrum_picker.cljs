@@ -51,7 +51,7 @@
             (recur)))
 
         (go-loop []
-          (when-let [[dxp _] (<! progress)]
+          (when-let [[dxp _] (drag/delta (<! progress))]
             (om/update! knob :position
                         (-> (+ (om/get-state owner :locked-position)
                                (* 2 (/ dxp target-width)))

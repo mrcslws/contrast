@@ -19,16 +19,13 @@
               [kmouseup ups] (event-listen js/window "mouseup")]
           (loop []
             (let [[evt port] (alts! [moves ups])
-                  d [(- (.-clientX evt)
-                        (.-clientX downevt))
-                     (- (.-clientY evt)
-                        (.-clientY downevt))]]
+                  m [evt downevt]]
               (if (= port moves)
                 (do
-                  (put! progress d)
+                  (put! progress m)
                   (recur))
                 (do
-                  (put! finished d)
+                  (put! finished m)
                   (events/unlistenByKey kmousemove)
                   (events/unlistenByKey kmouseup))))))
 
@@ -36,3 +33,9 @@
         ;; there are stale mousedowns sitting in the queue.
         (drain! mousedown))
       (recur))))
+
+(defn delta [[evt downevt]]
+  [(- (.-clientX evt)
+      (.-clientX downevt))
+   (- (.-clientY evt)
+      (.-clientY downevt))])

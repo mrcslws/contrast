@@ -230,9 +230,7 @@
     (let [width (.-width imagedata)
           height (.-height imagedata)
           d (.-data imagedata)
-          ;; TODO cache this on the vertical-easing
           cached-ps (js/Array. height)]
-
 
       (easing/foreach-xy vertical-easing height
                          (fn [y p]
