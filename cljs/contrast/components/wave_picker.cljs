@@ -14,14 +14,14 @@
           period (/ width 2)
           cshift (* shift period)
 
-          orient (progress/orient :bottom)
+          yp->plot-yp (progress/y->ploty :up)
           wfn (partial (get-method wavefn wave) wave period)
           col->row (fn [col]
                      (-> col
                          (+ cshift)
                          wfn
                          (progress/n->p -1 1)
-                         orient
+                         yp->plot-yp
                          (progress/p->int 0 (dec height))))]
       (dotimes [col width]
         (doto d

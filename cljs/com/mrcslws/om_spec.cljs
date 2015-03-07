@@ -25,7 +25,8 @@
 
     om/IWillMount
     (will-mount [_]
-      (let [cached-comparee (atom (drop-grandchildren
+      (let [;; Caching avoids recalculation and it makes calls to `=` faster.
+            cached-comparee (atom (drop-grandchildren
                                    (om/get-state owner :children)))]
        (go-loop []
          (let [{:keys [teardown check-your-channels channels path]}

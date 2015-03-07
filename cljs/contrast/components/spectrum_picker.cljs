@@ -235,7 +235,7 @@
                                         ;; col -> [-1 1]
                                         #(dec (* 2 (/ % width)))
                                         ;; [-1 1] -> color
-                                        (spectrum/dictionary spectrum))
+                                        spectrum)
                               awaiting-fpaint (fn [p]
                                                 {:f canvas-component
                                                  :props spectrum

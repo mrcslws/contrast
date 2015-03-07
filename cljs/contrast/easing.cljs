@@ -73,33 +73,54 @@
                          (/ step 2))))))]
     t))
 
-(deftype CubicBezierEasing [xdim ydim]
+(defn specify-easing! [easing]
+  ;; TODO do some pre verification, or I'll hate myself some day.
+  (let [{:keys [p1 p2]} easing
+        xdim (cubic-unit-bezier-dimension (:x p1) (:x p2))
+        ydim (cubic-unit-bezier-dimension (:y p1) (:y p2))]
+    (specify! easing
+              PBezier
+              (t->x [_ t]
+                (t->coord xdim t))
+              (t->y [_ t]
+                (t->coord ydim t))
+
+              PEasingBezier
+              (x->y [this x]
+                (t->y this
+                      (x->t xdim x x 1e-7)))
+              (y->x [this y]
+                (t->x this
+                      (x->t ydim y 0.5 1e-7)))
+              (foreach-xy [this xcount f]
+                (let [step (/ 1 xcount)
+                      epsilon (/ step 200)]
+                  (loop [i 0
+                         guess 0]
+                    (when (< i xcount)
+                      (let [x (* i step)
+                            t (x->t xdim x guess epsilon)]
+                        (f x (t->y this t))
+                        ;; Use this t to improve the next guess.
+                        (recur (inc i)
+                               (+ t step))))))))))
+
+(extend-type default
   PBezier
-  (t->x [_ t]
-    (t->coord xdim t))
-  (t->y [_ t]
-    (t->coord ydim t))
+  (t->x [this t]
+    (specify-easing! this)
+    (t->x this t))
+  (t->y [this t]
+    (specify-easing! this)
+    (t->y this t))
 
   PEasingBezier
   (x->y [this x]
-    (t->y this
-          (x->t xdim x x 1e-7)))
+    (specify-easing! this)
+    (x->y this x))
   (y->x [this y]
-    (t->x this
-          (x->t ydim y 0.5 1e-7)))
+    (specify-easing! this)
+    (y->x this y))
   (foreach-xy [this xcount f]
-    (let [step (/ 1 xcount)
-          epsilon (/ step 200)]
-      (loop [i 0
-             guess 0]
-        (when (< i xcount)
-          (let [x (* i step)
-                t (x->t xdim x guess epsilon)]
-            (f x (t->y this t))
-            ;; Use this t to improve the next guess.
-            (recur (inc i)
-                   (+ t step))))))))
-
-(defn cubic-bezier-easing [x1 y1 x2 y2]
-  (CubicBezierEasing. (cubic-unit-bezier-dimension x1 x2)
-                      (cubic-unit-bezier-dimension y1 y2)))
+    (specify-easing! this)
+    (foreach-xy this xcount f)))

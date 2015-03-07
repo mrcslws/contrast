@@ -110,7 +110,7 @@
                       (inc i)))))))))
 
 (defn trace-rets [f ch]
-  (fn [in]
+  (fn relayer [in]
     (let [r (f in)]
       (when ch
         (put! ch r))

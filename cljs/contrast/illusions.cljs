@@ -98,10 +98,9 @@
     (x->total-distance (get-in config [:left-period :period])
                        (get-in config [:right-period :period])
                        (:width config)))
-   (spectrum/dictionary (:spectrum config))
-   (let [{:keys [p1 p2]} (:vertical-easing config)]
-     (easing/cubic-bezier-easing (:x p1) (:y p1) (:x p2) (:y p2)))))
+   (:spectrum config)
+   (:vertical-easing config)))
 
 (defn harmonic-grating-idwriter [config]
   (cnv/solid-vertical-stripe-idwriter (harmonic-adder config)
-                                      (spectrum/dictionary (:spectrum config))))
+                                      (:spectrum config)))

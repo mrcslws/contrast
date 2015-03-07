@@ -19,10 +19,10 @@
           height (.-height imagedata)
           d (.-data imagedata)
 
-          orient (progress/orient :bottom)
+          yp->plot-yp (progress/y->ploty :up)
           y->row #(-> %
                       (progress/n->p -1 1)
-                      orient
+                      yp->plot-yp
                       (zoom 0.5)
                       (progress/p->int 0 (dec height)))
 

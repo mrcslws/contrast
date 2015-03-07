@@ -196,21 +196,23 @@
              :opts {:write-imagedata! write-imagedata!}}))
 
 (defn idwriter->painter [write-imagedata!]
-  (fn [cnv]
+  (fn paint-canvas
+    [cnv]
     (let [ctx (.getContext cnv "2d")
           id (.createImageData ctx (.-width cnv) (.-height cnv))]
       (.putImageData ctx (write-imagedata! id) 0 0))))
 
-(defn solid-vertical-stripe-idwriter [col->x x->rgb]
-  (fn [imagedata]
+(defn solid-vertical-stripe-idwriter [col->x spectrum]
+  (fn write-solid-vertical-stripes!
+    [imagedata]
     (let [width (.-width imagedata)
           height (.-height imagedata)
           d (.-data imagedata)]
       (dotimes [col width]
         (let [x (col->x col)
-              r (spectrum/x->r x->rgb x)
-              g (spectrum/x->g x->rgb x)
-              b (spectrum/x->b x->rgb x)]
+              r (spectrum/x->r spectrum x)
+              g (spectrum/x->g spectrum x)
+              b (spectrum/x->b spectrum x)]
           (dotimes [row height]
             (let [base (pixel/base width col row)]
               (doto d
@@ -222,12 +224,15 @@
 
 
 (defn gradient-vertical-stripe-idwriter
-  [col->topx col->bottomx x->rgb vertical-easing]
-  (fn [imagedata]
+  [col->topx col->bottomx spectrum vertical-easing]
+  (fn write-gradient-vertical-stripes!
+    [imagedata]
     (let [width (.-width imagedata)
           height (.-height imagedata)
           d (.-data imagedata)
+          ;; TODO cache this on the vertical-easing
           cached-ps (js/Array. height)]
+
 
       (easing/foreach-xy vertical-easing height
                          (fn [y p]
@@ -237,14 +242,14 @@
 
       (dotimes [col width]
         (let [topx (col->topx col)
-              r1 (spectrum/x->r x->rgb topx)
-              g1 (spectrum/x->g x->rgb topx)
-              b1 (spectrum/x->b x->rgb topx)
+              r1 (spectrum/x->r spectrum topx)
+              g1 (spectrum/x->g spectrum topx)
+              b1 (spectrum/x->b spectrum topx)
 
               botx (col->bottomx col)
-              r2 (spectrum/x->r x->rgb botx)
-              g2 (spectrum/x->g x->rgb botx)
-              b2 (spectrum/x->b x->rgb botx)]
+              r2 (spectrum/x->r spectrum botx)
+              g2 (spectrum/x->g spectrum botx)
+              b2 (spectrum/x->b spectrum botx)]
           (dotimes [row height]
             (let [p (aget cached-ps row)
                   base (pixel/base width col row)]

@@ -7,16 +7,8 @@
   (x->g [this x])
   (x->b [this x]))
 
-(deftype SpectrumDictionary [rzero gzero bzero rs gs bs]
-  PRgbDictionary
-  (x->r [_ x]
-    (-> x (* rs) (+ rzero) js/Math.round))
-  (x->g [_ x]
-    (-> x (* gs) (+ gzero) js/Math.round))
-  (x->b [_ x]
-    (-> x (* bs) (+ bzero) js/Math.round)))
-
-(defn dictionary [spectrum]
+(defn specify-dictionary! [spectrum]
+  ;; TODO do some pre verification, or I'll hate myself some day.
   (let [{:keys [left right]} spectrum
         dpos (- (:position right) (:position left))
         [rs gs bs :as slopes] (mapv #(/ (- %2 %) dpos)
@@ -25,13 +17,32 @@
                                     (- c (* s (:position right))))
                                   (:color right)
                                   slopes)]
-    (SpectrumDictionary. rzero gzero bzero rs gs bs)))
+    (specify! spectrum
+                PRgbDictionary
+                (x->r [_ x]
+                  (-> x (* rs) (+ rzero) js/Math.round))
+                (x->g [_ x]
+                  (-> x (* gs) (+ gzero) js/Math.round))
+                (x->b [_ x]
+                  (-> x (* bs) (+ bzero) js/Math.round)))))
 
-(defn x->cssrgb [dict x]
+(extend-type default
+  PRgbDictionary
+  (x->r [this r]
+    (specify-dictionary! this)
+    (x->r this r))
+  (x->g [this g]
+    (specify-dictionary! this)
+    (x->g this g))
+  (x->b [this b]
+    (specify-dictionary! this)
+    (x->g this b)))
+
+(defn x->cssrgb [spectrum x]
   (str "rgb("
-       (x->r dict x)
+       (x->r spectrum x)
        ","
-       (x->g dict x)
+       (x->g spectrum x)
        ","
-       (x->b dict x)
+       (x->b spectrum x)
        ")"))

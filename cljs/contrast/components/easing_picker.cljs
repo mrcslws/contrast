@@ -16,40 +16,13 @@
             [cljsjs.react])
   (:require-macros [cljs.core.async.macros :refer [go-loop alt!]]))
 
-(defn x-extractor [xorigin yorigin]
-  (if (or (= xorigin :left)
-          (= xorigin :right))
-    (let [orient (progress/orient xorigin)]
-      (fn extract
-        [x _]
-        (orient x)))
-    (let [orient (progress/orient yorigin)]
-      (fn extract
-        [_ y]
-        (orient y)))))
+(enable-console-print!)
 
-(defn y-extractor [xorigin yorigin]
-  (if (or (= yorigin :top)
-          (= xorigin :bottom))
-    (let [orient (progress/orient yorigin)]
-      (fn extract
-        [_ y]
-        (orient y)))
-    (let [orient (progress/orient xorigin)]
-      (fn extract
-        [x _]
-        (orient x)))))
-
-(defn lines-painter [easing xorigin yorigin]
-  (let [x-extract (x-extractor xorigin yorigin)
-        y-extract (y-extractor xorigin yorigin)
-
+(defn lines-painter [easing x+ y+]
+  (let [[xy->plot-xp xy->plot-yp] (progress/xy->plotxy x+ y+)
         {:keys [p1 p2]} easing
-
-        x1p (x-extract (:x p1) (:y p1))
-        y1p (y-extract (:x p1) (:y p1))
-        x2p (x-extract (:x p2) (:y p2))
-        y2p (y-extract (:x p2) (:y p2))]
+        {x1 :x y1 :y} p1
+        {x2 :x y2 :y} p2]
     (fn [cnv]
       (let [ctx (.getContext cnv "2d")
             w (.-width cnv)
@@ -60,37 +33,35 @@
           (.setLineDash #js [4 6])
           (.beginPath)
           (.moveTo 0 0)
-          (.lineTo (progress/p->int x1p 0 (dec w))
-                   (progress/p->int y1p 0 (dec h)))
+          (.lineTo (-> (xy->plot-xp x1 y1)
+                       (progress/p->int 0 (dec w)))
+                   (-> (xy->plot-yp x1 y1)
+                       (progress/p->int 0 (dec h))))
           (.stroke)
           (.beginPath)
           (.moveTo (dec w) (dec h))
-          (.lineTo (progress/p->int x2p 0 (dec w))
-                   (progress/p->int y2p 0 (dec h)))
+          (.lineTo (-> (xy->plot-xp x2 y2)
+                       (progress/p->int 0 (dec w)))
+                   (-> (xy->plot-yp x2 y2)
+                       (progress/p->int 0 (dec h))))
           (.stroke))))))
 
-(defn idwriter [easing xorigin yorigin]
-  (let [{:keys [p1 p2]} easing
-        easing-function (easing/cubic-bezier-easing (:x p1)
-                                                    (:y p1)
-                                                    (:x p2)
-                                                    (:y p2))]
-    (fn write-imagedata! [imgdata]
-      (let [width (.-width imgdata)
-            height (.-height imgdata)
-            d (.-data imgdata)
-            x-extract (x-extractor xorigin yorigin)
-            y-extract (y-extractor xorigin yorigin)]
-        (easing/foreach-xy easing-function width
-                           (fn [easing-x easing-y]
-                             (let [col (-> (x-extract easing-x easing-y)
-                                           (progress/p->int 0 (dec width)))
-                                   row (-> (y-extract easing-x easing-y)
-                                           (progress/p->int 0 (dec height)))
-                                   base (pixel/base width col row)]
-                               (doto d
-                                 (aset (+ base 3) 255)))))
-        imgdata))))
+(defn idwriter [easing x+ y+]
+  (let [[xy->plot-xp xy->plot-yp] (progress/xy->plotxy x+ y+)]
+   (fn write-imagedata! [imgdata]
+     (let [width (.-width imgdata)
+           height (.-height imgdata)
+           d (.-data imgdata)]
+       (easing/foreach-xy easing width
+                          (fn [easing-x easing-y]
+                            (let [col (-> (xy->plot-xp easing-x easing-y)
+                                          (progress/p->int 0 (dec width)))
+                                  row (-> (xy->plot-yp easing-x easing-y)
+                                          (progress/p->int 0 (dec height)))
+                                  base (pixel/base width col row)]
+                              (doto d
+                                (aset (+ base 3) 255)))))
+       imgdata))))
 
 (defn point-picker-component [point owner]
   (reify
@@ -101,29 +72,41 @@
 
     om/IWillMount
     (will-mount [_]
-      (let [{:keys [mousedown]} (om/get-state owner)
+      (let [mousedown (om/get-state owner :mousedown)
             started (chan)
             progress (chan)
             finished (chan)]
         (drag/watch mousedown started progress finished)
 
+        ;; TODO - boundaries.
+        ;; TODO - it's silly that I'm working with deltas.
+        ;; My API is making me do extra work. Deltas make sense
+        ;; for panning, not for repositioning an object.
         (go-loop []
           (when-let [_ (<! started)]
-            (let [drag-start @point]
+            (let [{:keys [x+ y+]} (om/get-state owner)
+                  {startxp :x startyp :y} @point
+
+                  [plot-xy->xp plot-xy->yp] (progress/plotxy->xy x+ y+)
+
+                  ;; This won't be necessary when I get away from deltas.
+                  [xy->plot-xp xy->plot-yp] (progress/xy->plotxy x+ y+)
+                  plot-xp-start (xy->plot-xp startxp startyp)
+                  plot-yp-start (xy->plot-yp startxp startyp)]
               (loop []
                 (alt! progress
-                      ([[dxp dyp]]
-                         (let [container (om/get-node owner "container")]
+                      ([[dxpx dypx]]
+                         (let [container (om/get-node owner "container")
+                               plot-dxp (progress/n->p dxpx
+                                                       0 (.-offsetWidth container))
+                               plot-dyp (progress/n->p dypx
+                                                       0 (.-offsetHeight container))
+                               plot-xp (+ plot-xp-start plot-dxp)
+                               plot-yp (+ plot-yp-start plot-dyp)]
                            (om/transact! point
                                          #(assoc %
-                                            :y (-> dxp
-                                                   (* (/ 1 (.-offsetWidth
-                                                            container)))
-                                                   (+ (:y drag-start)))
-                                            :x (-> dyp
-                                                   (* (/ 1 (.-offsetHeight
-                                                            container)))
-                                                   (+ (:x drag-start))))))
+                                            :x (plot-xy->xp plot-xp plot-yp)
+                                            :y (plot-xy->yp plot-xp plot-yp))))
                          (recur))
 
                       finished
@@ -134,29 +117,29 @@
             (recur)))))
 
     om/IRenderState
-    (render-state [_ {:keys [mousedown]}]
+    (render-state [_ {:keys [mousedown x+ y+]}]
       (dom/div #js {:ref "container"
                     :style #js {:display "inline-block"
                                 :height "100%"
                                 :width "100%"}}
-               (dom/div #js {:onMouseDown (fn [e]
-                                            ;; TODO add extern for
-                                            ;; SyntheticEvent.persist
-                                            (.persist e)
-                                            ;; (.call (aget e "persist") e)
-                                            (.preventDefault e)
-                                            (put! mousedown e)
-                                            nil)
-                             :style #js {:cursor "pointer"
-                                         :position "absolute"
-                                         :left (progress/percent (:y point))
-                                         :top (progress/percent (:x point))}}
-                        (background-image "images/SliderKnob.png" 13 13 -6 -6))))))
+               (let [[plot-xp plot-yp] (progress/xy->plotxy
+                                        (:x point) (:y point)
+                                        x+ y+)]
+                 (dom/div #js {:onMouseDown (fn [e]
+                                              (.persist e)
+                                              (.preventDefault e)
+                                              (put! mousedown e)
+                                              nil)
+                               :style #js {:cursor "pointer"
+                                           :position "absolute"
+                                           :left (progress/percent plot-xp)
+                                           :top (progress/percent plot-yp)}}
+                          (background-image "images/SliderKnob.png" 13 13 -6 -6)))))))
 
 (defn easing-picker-component [easing owner]
   (reify
     om/IRenderState
-    (render-state [_ {:keys [xorigin yorigin w h]}]
+    (render-state [_ {:keys [x+ y+ w h]}]
       (dom/div #js {:style #js {:display "inline-block"
                                 :position "relative"
                                 :width w
@@ -234,20 +217,20 @@
                                          :height "100%"
                                          :zIndex 2}}
                         (om/build point-picker-component (:p1 easing)
-                                  {:state {:xorigin xorigin
-                                           :yorigin yorigin}})
+                                  {:state {:x+ x+
+                                           :y+ y+}})
                         (om/build point-picker-component (:p2 easing)
-                                  {:state {:xorigin xorigin
-                                           :yorigin yorigin}}))
+                                  {:state {:x+ x+
+                                           :y+ y+}}))
 
                (dom/div #js {:style #js {:position "absolute"
                                          :width "100%"
                                          :height "100%"
                                          :zIndex 1}}
                         (cnv/canvas easing w h
-                                    (lines-painter easing xorigin yorigin)))
+                                    (lines-painter easing x+ y+)))
                (dom/div #js {:style #js {:position "relative"
                                          :zIndex 0}}
                         (cnv/canvas easing w h
                                     (cnv/idwriter->painter
-                                     (idwriter easing xorigin yorigin))))))))
+                                     (idwriter easing x+ y+))))))))

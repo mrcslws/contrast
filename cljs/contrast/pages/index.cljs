@@ -8,7 +8,8 @@
             [contrast.components.color-picker :refer [color-picker-component]]
             [contrast.components.easing-picker :refer [easing-picker-component]]
             [contrast.components.eyedropper-zone :refer [eyedropper-zone-spec]]
-            [contrast.components.feature-magnet :refer [bezier-feature-magnet-spec]]
+            [contrast.components.feature-magnet :refer [bezier-feature-magnet-spec
+                                                        bezier-spectrum-magnets-component]]
             [contrast.components.fixed-table :refer [fixed-table-component]]
             [contrast.components.numvec-editable :refer [numvec-editable]]
             [contrast.components.row-display :refer [row-display-component]]
@@ -22,6 +23,7 @@
             [contrast.illusions :as illusions]
             [contrast.instrumentation :as instrumentation]
             [contrast.page-triggers :as page-triggers]
+            [contrast.progress :as progress]
             [contrast.spectrum :as spectrum] ;; TODO necessary?
             [contrast.state :as state]
             [om.dom :as dom :include-macros true]
@@ -251,44 +253,15 @@
                                                           figure)
                                  {:state {:w w
                                           :h h
-
-                                          ;; Plot x axis along left side.
-                                          :xorigin :top
-                                          :yorigin :left}})
-                       (apply dom/div #js {:style #js {:verticalAlign "top"
-
-                                                       ;; TODO Mirroring the easing picker
-                                                       :marginTop 10
-
-                                                       :marginLeft 30
-                                                       :display "inline-block"
-                                                       :position "relative"}}
-                              (let [s (spectrum/dictionary (:spectrum figure))]
-                                (map (fn [yseek]
-                                       (spec/render
-                                        (bezier-feature-magnet-spec
-                                         (:vertical-easing figure)
-                                         yseek
-                                         (fn [x] (-> x (* h) js/Math.round (- 2)))
-                                         (constantly 0)
-                                         [(dom/div
-                                           #js {:style
-                                                #js {:position "absolute"
-                                                     :left 0
-                                                     :height 5
-                                                     :width 6
-                                                     :backgroundColor (spectrum/x->cssrgb
-                                                                       s (* yseek -1))}})
-                                          (dom/div
-                                           #js {:style
-                                                #js {:position "absolute"
-                                                     :left 6
-                                                     :height 5
-                                                     :width 6
-                                                     :backgroundColor (spectrum/x->cssrgb
-                                                                       s yseek)}})])))
-                                     [0 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1])))))))))))))
-
+                                          :x+ :down
+                                          :y+ :right
+                                          }})
+                       (om/build bezier-spectrum-magnets-component
+                                 {:spectrum (:spectrum figure)
+                                  :easing (:vertical-easing figure)}
+                                 {:state {:h h
+                                          :yseeks [0 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1]}})
+                       ))))))))))
 
 (defn harmonic-grating [k owner]
   (reify
