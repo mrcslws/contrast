@@ -150,6 +150,9 @@
                                       :schema {:key :color}}))))
           (section
            (heading "over a distance of:")
+           ;; hack
+           (dom/div #js {:style #js {:width 300
+                                     :height 0}})
            (indented (line (label-pixels (get-in figure [:transition
                                                          :radius])) "."
                            (slider {:position "absolute"
@@ -399,7 +402,15 @@
                    ;; TODO clearly I can do better.
                    (dom/div #js {:style #js {:marginTop 20}})
 
-                   (indented (om/build damped-spectrum-picker-component figure)))))))))
+                   (indented (om/build damped-spectrum-picker-component figure
+                                       {:opts {:canvas-spec-transform
+                                               (fn [spec imgdata]
+                                                 (eyedropper-zone-spec
+                                                  k {:key :selected-color} imgdata
+                                                  [{:f color-exposer-component
+                                                    :props k
+                                                    :m {:state {:imagedata imgdata}}
+                                                    :children [spec]}]))}})))))))))
 
 (defn harmonic-grating [k owner]
   (reify

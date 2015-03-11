@@ -1,8 +1,11 @@
 (ns contrast.components.damped-spectrum-picker
-  (:require [contrast.components.canvas :as cnv]
+  (:require [com.mrcslws.om-spec :as spec]
+            [contrast.components.canvas :as cnv :refer [canvas-component]]
+            [contrast.components.chan-handlers :refer [chan-genrender]]
             [contrast.components.easing-picker :refer [easing-picker-component easing-display-component lines-painter point-picker-component]]
             [contrast.components.feature-magnet :refer [bezier-spectrum-magnets-component]]
             [contrast.components.spectrum-picker :refer [spectrum-picker-spec color-knob-component]]
+            [contrast.common :refer [trace-rets]]
             [contrast.easing :as easing]
             [contrast.pixel :as pixel]
             [contrast.progress :as progress]
@@ -45,13 +48,6 @@
                                      :textAlign "center"}}
                     bottom-label)))
 
-
-;; Flaws:
-;; - lots of gaps
-;; - doesn't repaint on spectrum change
-;; I should learn from my color-knob experience. Stop relying on easing-picker
-;; to display a bezier curve. Display my own, and just use it for the points.
-;; What about the lines?
 (defn paint-spectrum-underneath [spectrum xoffset totalw]
   (fn [imgdata x y]
     (let [d (.-data imgdata)
@@ -74,7 +70,7 @@
               (aset (+ base 3) 255)))
           (recur (inc i)))))))
 
-(defn idwriter [spectrum easing x+ y+]
+(defn curve-and-colors-idwriter [spectrum easing x+ y+]
   (fn write-damped-spectrum-imagedata! [imagedata]
     (let [width (.-width imagedata)
           height (.-height imagedata)
@@ -130,7 +126,7 @@
 
     imagedata))
 
-(defn damped-spectrum-picker-component [figure owner]
+(defn damped-spectrum-picker-component [figure owner {:keys [canvas-spec-transform]}]
   (reify
     om/IRender
     (render [_]
@@ -139,7 +135,14 @@
             h 200
             totalw (* 2 w)
             x+ :up
-            y+ :right]
+            y+ :right
+            idwriter (curve-and-colors-idwriter spectrum vertical-easing x+ y+)
+            awaiting-fpaint (fn [p]
+                              {:f canvas-component
+                               :props [spectrum vertical-easing]
+                               :m {:state {:width totalw
+                                           :height h}
+                                   :opts {:paint p}}})]
 
         (dom/div #js {:style #js {:position "relative"}}
                  (left-axis h "Top" "Bottom" -12)
@@ -153,10 +156,17 @@
                                                     :width "100%"
                                                     :height "100%"
                                                     :zIndex 0}}
-                                   (cnv/canvas [spectrum vertical-easing] totalw h
-                                               (cnv/idwriter->painter
-                                                (idwriter spectrum vertical-easing
-                                                          x+ y+))))
+                                   (if canvas-spec-transform
+                                     (chan-genrender
+                                      (fn [channel imgdata]
+                                        (-> (awaiting-fpaint (cnv/idwriter->painter
+                                                              (trace-rets idwriter
+                                                                          channel)))
+                                            (canvas-spec-transform imgdata)
+                                            spec/render))
+                                      spectrum)
+                                     (-> (awaiting-fpaint (cnv/idwriter->painter idwriter))
+                                         spec/render)))
                           (dom/div #js {:style #js {:position "absolute"
                                                     :width "100%"
                                                     :height "100%"
