@@ -114,7 +114,9 @@
       ;; First, paint the whole thing with the spectrum, but make it
       ;; transparent.
       (dotimes [col width]
-        (let [x (progress/n->p col 0 (dec width))
+        (let [x (-> col
+                    (progress/n->p 0 (dec width))
+                    (progress/p->n -1 1))
               r (spectrum/x->r spectrum x)
               g (spectrum/x->g spectrum x)
               b (spectrum/x->b spectrum x)]

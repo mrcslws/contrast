@@ -74,7 +74,8 @@
 (defn single-sinusoidal-gradient-idwriter [config]
   (two-sides-idwriter config (number-line-maker linear->sinusoidal)))
 
-;; If a body is accelerating from start-period at x of 0 to
+;; (Can use calculus for closed-form equations. Not for béziers.)
+;; If a body is accelerating linearly from start-period at x of 0 to
 ;; stop-period at x of (width - 1), get the distance covered at an
 ;; in-between point. Compose this with other functions
 ;; (e.g. waveforms) to get an accelerating version of that function.
@@ -91,15 +92,44 @@
             (- (js/Math.log start-period))
             (* (/ 1 period-acceleration)))))))
 
+;; Approximation: discrete acceleration.
+(defn approximate-distances [left-period right-period width easing]
+  (let [distances (js/Array. width)]
+    (easing/foreach-xy easing width
+                       (fn [x p]
+                         (let [col (progress/p->int x 0 (dec width))
+                               period (progress/p->n p left-period
+                                                     right-period)
+                               frequency (/ 1 period)]
+
+                           (aset distances col
+                                 (cond-> frequency
+                                         (pos? col) (+ (aget distances (dec col))))))))
+    (fn [col]
+      (aget distances col))))
+
+(defn cache-damp-factors [easing height]
+  (let [cache (js/Array. height)]
+    ;; Current version: use an easing function for damping. This means one
+    ;; side has to be damped to 0% while the other side has to be undamped.
+    ;; Arbitrary limitation.
+    (easing/foreach-xy easing height
+                       (fn [y d]
+                         (aset cache
+                               (js/Math.round (* y height))
+                               d)))
+    (fn [row]
+      (aget cache row))))
+
 (defn sweep-grating-idwriter [config]
   (fn write-sweep-grating! [imgdata]
-    (let [{:keys [width height vertical-easing spectrum left-period right-period wave]} config
+    (let [{:keys [width height vertical-easing horizontal-easing spectrum left-period right-period wave]} config
           wfn (partial (get-method wavefn (:form wave)) (:form wave) 1)
-          col->wfnx (x->total-distance (:period left-period)
-                                       (:period right-period)
-                                       width)
+          col->wfnx (approximate-distances (:period left-period)
+                                           (:period right-period)
+                                           width horizontal-easing)
+          row->damp-factor (cache-damp-factors vertical-easing height)
 
-          cached-damp-factors (js/Array. height)
           d (.-data imgdata)
 
           ;; It's slow to call this once per pixel, so call it once per
@@ -107,16 +137,6 @@
           minr (spectrum/x->r spectrum 0)
           ming (spectrum/x->g spectrum 0)
           minb (spectrum/x->b spectrum 0)]
-
-      ;; Current version: use an easing function for damping. This means one
-      ;; side has to be damped to 0% while the other side has to be undamped.
-      ;; Arbitrary limitation.
-      (easing/foreach-xy vertical-easing height
-                         (fn [y d]
-                           (aset cached-damp-factors
-                                 (js/Math.round (* y height))
-                                 d)))
-
       (dotimes [col width]
         (let [before-damp (-> col col->wfnx wfn)
 
@@ -124,7 +144,7 @@
               maxg (spectrum/x->g spectrum before-damp)
               maxb (spectrum/x->b spectrum before-damp)]
           (dotimes [row height]
-            (let [damp-factor (aget cached-damp-factors row)
+            (let [damp-factor (row->damp-factor row)
                   base (pixel/base width col row)]
               (doto d
                 (aset base (progress/p->int damp-factor minr maxr))
