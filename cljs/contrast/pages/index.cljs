@@ -1,7 +1,7 @@
 (ns contrast.pages.index
   (:require [cljs.core.async :refer [put! chan mult tap close! <!]]
             [com.mrcslws.om-spec :as spec]
-            [contrast.common :refer [trace-rets]]
+            [contrast.common :refer [trace-rets wavefn]]
             [contrast.components.canvas :as cnv :refer [canvas-component]]
             [contrast.components.chan-handlers :refer [chan-genrender]]
             [contrast.components.color-exposer :refer [color-exposer-component]]
@@ -163,6 +163,129 @@
                                     :str-format "%dpx"
                                     :interval 1}))))))))))
 
+(defn bottom-axis [w left-label right-label offset]
+  (dom/div #js {:style
+                #js {:position "absolute"
+                     :bottom (- -20 offset)
+                     :width w
+                     :height 20
+                     :font "10px Helvetica, Arial, sans-serif"
+                     :color "#696969"
+                     :borderTop "1px solid #696969"}}
+           (dom/div #js {:style #js {:position "absolute"
+                                     :left 0
+                                     :top -4
+                                     :width 1
+                                     :height 8
+                                     :backgroundColor "black"}})
+           (dom/div #js {:style #js {:position "absolute"
+                                     :top 10
+                                     :left -3}}
+                    left-label)
+           (dom/div #js {:style #js {:position "absolute"
+                                     :right 0
+                                     :top -4
+                                     :width 1
+                                     :height 8
+                                     :backgroundColor "black"}})
+           (dom/div #js {:style #js {:position "absolute"
+                                     :top 10
+                                     :textAlign "center"
+                                     :width 40
+                                     :right -20}}
+                    right-label)))
+
+(defn left-axis [h top-label bottom-label offset]
+  (dom/div #js {:style
+                #js {:position "absolute"
+                     :left (- -20 offset)
+                     :width 20
+                     :height h
+                     :font "10px Helvetica, Arial, sans-serif"
+                     :color "#696969"
+                     :borderRight "1px solid #696969"}}
+           (dom/div #js {:style #js {:position "absolute"
+                                     :right -4
+                                     :top 0
+                                     :width 8
+                                     :height 1
+                                     :backgroundColor "black"}})
+           (dom/div #js {:style #js {:position "absolute"
+                                     :top -3
+                                     :right 8}}
+                    top-label)
+           (dom/div #js {:style #js {:position "absolute"
+                                     :right -4
+                                     :bottom 0
+
+                                     :width 8
+                                     :height 1
+                                     :backgroundColor "black"}})
+           (dom/div #js {:style #js {:position "absolute"
+                                     :right 8
+                                     :bottom -5
+                                     :textAlign "center"}}
+                    bottom-label)))
+
+(defn right-axis [h top-label bottom-label offset top-offset]
+  (dom/div #js {:style
+                #js {:position "absolute"
+                     :right (- -20 offset)
+                     :top top-offset
+                     :bottom "25%"
+                     :width 20
+                     :height h
+                     :font "10px Helvetica, Arial, sans-serif"
+                     :color "#696969"
+                     :borderLeft "1px solid #696969"}}
+           (dom/div #js {:style #js {:position "absolute"
+                                     :left -4
+                                     :top 0
+                                     :width 8
+                                     :height 1
+                                     :backgroundColor "black"}})
+           (dom/div #js {:style #js {:position "absolute"
+                                     :top -3
+                                     :left 8}}
+                    top-label)
+           (dom/div #js {:style #js {:position "absolute"
+                                     :left -4
+                                     :bottom 0
+
+                                     :width 8
+                                     :height 1
+                                     :backgroundColor "black"}})
+           (dom/div #js {:style #js {:position "absolute"
+                                     :left 8
+                                     :bottom -5
+                                     :textAlign "center"}}
+                    bottom-label)))
+
+(defn accelerating-wave-easing-idwriter
+  [wave left-period right-period figure-width horizontal-easing]
+  (fn [imgdata]
+    (let [width (.-width imgdata)
+          height (.-height imgdata)
+          d (.-data imgdata)
+          fig-col->wfnx (illusions/approximate-distances left-period right-period
+                                                         figure-width horizontal-easing)
+          wfn (partial (get-method wavefn wave) wave 1)
+          bottom (quot height 4)
+          top (* bottom 3)]
+      (dotimes [col width]
+        (let [row (-> col
+                      (progress/n->p 0 (dec width))
+                      (progress/p->int 0 (dec figure-width))
+                      fig-col->wfnx
+                      wfn
+                      (progress/n->p -1 1)
+                      (progress/p->int bottom (dec top)))
+              base (pixel/base width col row)]
+          (doto d
+            (aset (+ base 2) 255)
+            (aset (+ base 3) 255)))))
+    imgdata))
+
 (defn sweep-grating [k owner]
   (reify
     om/IDisplayName
@@ -230,12 +353,44 @@
                                           :str-format "%dpx"
                                           :interval 1}))))
                     (line)
-                    (line (om/build easing-picker-component (:horizontal-easing
-                                                             figure)
-                                    {:state {:w 200
-                                             :h 200
-                                             :x+ :right
-                                             :y+ :up}}))))
+                    (let [w 300
+                          h 200
+                          {:keys [horizontal-easing left-period right-period wave]} figure
+                          wave (:form wave)
+                          left-period (:period left-period)
+                          right-period (:period right-period)]
+                      (line
+                       (dom/div #js {:style #js {:display "inline-block"
+                                                 :position "relative"
+                                                 :width w
+                                                 :height h
+                                                 :marginLeft 25
+                                                 :marginRight 10
+                                                 :marginBottom 25}}
+                                (left-axis h
+                                           (label-pixels (get-in figure [:right-period :period]))
+                                           (label-pixels (get-in figure [:left-period :period]))
+                                           10)
+                                (dom/div #js {:style #js {:position "absolute"
+                                                          :width "100%"
+                                                          :height "100%"
+                                                          :zIndex 0}}
+                                         (cnv/canvas [wave horizontal-easing left-period right-period]
+                                                     w h
+                                                     (cnv/idwriter->painter
+                                                      (accelerating-wave-easing-idwriter
+                                                       wave left-period right-period width horizontal-easing))))
+                                (dom/div #js {:style #js {:position "absolute"
+                                                          :width "100%"
+                                                          :height "100%"
+                                                          :zIndex 1}}
+                                         (om/build easing-picker-component horizontal-easing
+                                                   {:state {:w w
+                                                            :h h
+                                                            :x+ :right
+                                                            :y+ :up}}))
+                                (right-axis (quot h 2) "1" "-1" 10 (quot h 4))
+                                (bottom-axis w "Left" "Right" 10))))))
 
                   (section
                    (heading "Translate these numbers into color:")

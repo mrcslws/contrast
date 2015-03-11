@@ -46,38 +46,6 @@
                     bottom-label)))
 
 
-(defn bottom-axis [w left-label right-label offset]
-  (dom/div #js {:style
-                #js {:position "absolute"
-                     :bottom (- -20 offset)
-                     :width w
-                     :height 20
-                     :font "10px Helvetica, Arial, sans-serif"
-                     :color "#696969"
-                     :borderTop "1px solid #696969"}}
-           (dom/div #js {:style #js {:position "absolute"
-                                     :left 0
-                                     :top -4
-                                     :width 1
-                                     :height 8
-                                     :backgroundColor "black"}})
-           (dom/div #js {:style #js {:position "absolute"
-                                     :top 10
-                                     :left -3}}
-                    left-label)
-           (dom/div #js {:style #js {:position "absolute"
-                                     :right 0
-                                     :top -4
-                                     :width 1
-                                     :height 8
-                                     :backgroundColor "black"}})
-           (dom/div #js {:style #js {:position "absolute"
-                                     :top 10
-                                     :textAlign "center"
-                                     :width 40
-                                     :right -20}}
-                    right-label)))
-
 ;; Flaws:
 ;; - lots of gaps
 ;; - doesn't repaint on spectrum change
