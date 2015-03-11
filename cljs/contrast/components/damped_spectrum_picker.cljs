@@ -164,7 +164,7 @@
                                                                           channel)))
                                             (canvas-spec-transform imgdata)
                                             spec/render))
-                                      spectrum)
+                                      [spectrum vertical-easing])
                                      (-> (awaiting-fpaint (cnv/idwriter->painter idwriter))
                                          spec/render)))
                           (dom/div #js {:style #js {:position "absolute"

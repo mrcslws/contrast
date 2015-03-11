@@ -239,14 +239,14 @@
                      :width 20
                      :height h
                      :font "10px Helvetica, Arial, sans-serif"
-                     :color "#696969"
-                     :borderLeft "1px solid #696969"}}
+                     :color "blue"
+                     :borderLeft "1px solid blue"}}
            (dom/div #js {:style #js {:position "absolute"
                                      :left -4
                                      :top 0
                                      :width 8
                                      :height 1
-                                     :backgroundColor "black"}})
+                                     :backgroundColor "blue"}})
            (dom/div #js {:style #js {:position "absolute"
                                      :top -3
                                      :left 8}}
@@ -257,7 +257,7 @@
 
                                      :width 8
                                      :height 1
-                                     :backgroundColor "black"}})
+                                     :backgroundColor "blue"}})
            (dom/div #js {:style #js {:position "absolute"
                                      :left 8
                                      :bottom -5
