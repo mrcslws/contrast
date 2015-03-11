@@ -51,10 +51,6 @@
     (render-state [_ {:keys [h yseeks]}]
       (apply dom/div #js {:style #js {:verticalAlign "top"
 
-                                      ;; TODO Mirroring the easing picker
-                                      :marginTop 10
-
-                                      :marginLeft 30
                                       :display "inline-block"
                                       :position "relative"}}
              (->> yseeks

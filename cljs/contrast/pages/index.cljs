@@ -6,16 +6,16 @@
             [contrast.components.chan-handlers :refer [chan-genrender]]
             [contrast.components.color-exposer :refer [color-exposer-component]]
             [contrast.components.color-picker :refer [color-picker-component]]
-            [contrast.components.easing-picker :refer [easing-picker-component]]
+            [contrast.components.damped-spectrum-picker :refer [damped-spectrum-picker-component]]
+            [contrast.components.easing-picker :refer [easing-picker-component easing-display-component]]
             [contrast.components.eyedropper-zone :refer [eyedropper-zone-spec]]
-            [contrast.components.feature-magnet :refer [bezier-feature-magnet-spec
-                                                        bezier-spectrum-magnets-component]]
+
             [contrast.components.fixed-table :refer [fixed-table-component]]
             [contrast.components.numvec-editable :refer [numvec-editable]]
             [contrast.components.row-display :refer [row-display-component]]
             [contrast.components.row-probe :refer [row-probe-spec]]
             [contrast.components.slider :refer [slider]]
-            [contrast.components.spectrum-picker :refer [spectrum-picker-spec]]
+            [contrast.components.spectrum-picker :refer [spectrum-picker-spec color-knob-component]]
             [contrast.components.state-display :refer [state-display-component]]
             [contrast.components.wave-display :refer [wave-display-component]]
             [contrast.components.wave-picker :refer [wave-picker-component]]
@@ -23,8 +23,9 @@
             [contrast.illusions :as illusions]
             [contrast.instrumentation :as instrumentation]
             [contrast.page-triggers :as page-triggers]
+            [contrast.pixel :as pixel]
             [contrast.progress :as progress]
-            [contrast.spectrum :as spectrum] ;; TODO necessary?
+            [contrast.spectrum :as spectrum]
             [contrast.state :as state]
             [om.dom :as dom :include-macros true]
             [om.core :as om :include-macros true])
@@ -191,20 +192,9 @@
                           (spec->row-probed k imgdata)))
                    canary))
                  (algorithm
-                  (section
-                   (heading "Choose a spectrum.")
-                   (indented (line (spectrum-picker-spec
-                                    (:spectrum figure) 360
-                                    (fn [spec imgdata]
-                                      (eyedropper-zone-spec
-                                       k {:key :selected-color} imgdata
-                                       [{:f color-exposer-component
-                                         :props k
-                                         :m {:state {:imagedata imgdata}}
-                                         :children [spec]}]))))))
 
                   (section
-                   (heading "Configure a wave.")
+                   (heading "Create numbers between -1 and 1 using a wave:")
 
                    (indented
                     (line "Create a " (name (get-in figure [:wave :form])) " wave.")
@@ -240,28 +230,21 @@
                                           :str-format "%dpx"
                                           :interval 1}))))
                     (line)
-
-                    (line "In between, ease between these periods linearly.")))
+                    (line (om/build easing-picker-component (:horizontal-easing
+                                                             figure)
+                                    {:state {:w 200
+                                             :h 200
+                                             :x+ :right
+                                             :y+ :up}}))))
 
                   (section
-                   (heading "Now use them.")
-                   (indented
-                    (let [w 200
-                          h 200]
-                      (line
-                       (om/build easing-picker-component (:vertical-easing
-                                                          figure)
-                                 {:state {:w w
-                                          :h h
-                                          :x+ :down
-                                          :y+ :right
-                                          }})
-                       (om/build bezier-spectrum-magnets-component
-                                 {:spectrum (:spectrum figure)
-                                  :easing (:vertical-easing figure)}
-                                 {:state {:h h
-                                          :yseeks [0 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1]}})
-                       ))))))))))
+                   (heading "Translate these numbers into color:")
+
+                   (line "Dampen the numbers according to their height, and then translate to color.")
+                   ;; TODO clearly I can do better.
+                   (dom/div #js {:style #js {:marginTop 20}})
+
+                   (indented (om/build damped-spectrum-picker-component figure)))))))))
 
 (defn harmonic-grating [k owner]
   (reify

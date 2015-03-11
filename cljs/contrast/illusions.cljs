@@ -3,6 +3,7 @@
             [contrast.components.canvas :as cnv]
             [contrast.easing :as easing]
             [contrast.pixel :as pixel]
+            [contrast.progress :as progress]
             [contrast.spectrum :as spectrum]
             [om.core :as om :include-macros true])
   (:require-macros [contrast.macros :refer [dorange]]))
@@ -91,15 +92,46 @@
             (* (/ 1 period-acceleration)))))))
 
 (defn sweep-grating-idwriter [config]
-  (cnv/gradient-vertical-stripe-idwriter
-   (constantly 0)
-   (comp
-    (partial (get-method wavefn (get-in config [:wave :form])) (get-in config [:wave :form]) 1)
-    (x->total-distance (get-in config [:left-period :period])
-                       (get-in config [:right-period :period])
-                       (:width config)))
-   (:spectrum config)
-   (:vertical-easing config)))
+  (fn write-sweep-grating! [imgdata]
+    (let [{:keys [width height vertical-easing spectrum left-period right-period wave]} config
+          wfn (partial (get-method wavefn (:form wave)) (:form wave) 1)
+          col->wfnx (x->total-distance (:period left-period)
+                                       (:period right-period)
+                                       width)
+
+          cached-damp-factors (js/Array. height)
+          d (.-data imgdata)
+
+          ;; It's slow to call this once per pixel, so call it once per
+          ;; column + this once.
+          minr (spectrum/x->r spectrum 0)
+          ming (spectrum/x->g spectrum 0)
+          minb (spectrum/x->b spectrum 0)]
+
+      ;; Current version: use an easing function for damping. This means one
+      ;; side has to be damped to 0% while the other side has to be undamped.
+      ;; Arbitrary limitation.
+      (easing/foreach-xy vertical-easing height
+                         (fn [y d]
+                           (aset cached-damp-factors
+                                 (js/Math.round (* y height))
+                                 d)))
+
+      (dotimes [col width]
+        (let [before-damp (-> col col->wfnx wfn)
+
+              maxr (spectrum/x->r spectrum before-damp)
+              maxg (spectrum/x->g spectrum before-damp)
+              maxb (spectrum/x->b spectrum before-damp)]
+          (dotimes [row height]
+            (let [damp-factor (aget cached-damp-factors row)
+                  base (pixel/base width col row)]
+              (doto d
+                (aset base (progress/p->int damp-factor minr maxr))
+                (aset (+ base 1) (progress/p->int damp-factor ming maxg))
+                (aset (+ base 2) (progress/p->int damp-factor minb maxb))
+                (aset (+ base 3) 255)))))))
+    imgdata))
 
 (defn harmonic-grating-idwriter [config]
   (cnv/solid-vertical-stripe-idwriter (harmonic-adder config)

@@ -40,10 +40,11 @@
     v
     false))
 
+;; Ported from jQuery.
 (defn page-x [evt]
   (or (.-pageX evt)
-      (let [doc (.-documentElement js/document)
-            body (.-body js/document)]
+      (let [doc js/document.documentElement
+            body js/document.body]
         (+ (.-clientX evt)
            (- (or (nonzero-number? (and doc (.-scrollLeft doc)))
                   (nonzero-number? (and body (.-scrollLeft body)))
@@ -52,6 +53,7 @@
                   (nonzero-number? (and body (.-clientLeft body)))
                   0))))))
 
+;; Ported from jQuery.
 (defn page-y [evt]
   (or (.-pageY evt)
       (let [doc js/document.documentElement

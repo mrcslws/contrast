@@ -31,14 +31,20 @@
           (cnv/clear)
           (.setLineDash #js [4 6])
           (.beginPath)
-          (.moveTo 0 0)
+          (.moveTo (-> (xy->plot-xp 0 0)
+                       (progress/p->int 0 (dec w)))
+                   (-> (xy->plot-yp 0 0)
+                       (progress/p->int 0 (dec h))))
           (.lineTo (-> (xy->plot-xp x1 y1)
                        (progress/p->int 0 (dec w)))
                    (-> (xy->plot-yp x1 y1)
                        (progress/p->int 0 (dec h))))
           (.stroke)
           (.beginPath)
-          (.moveTo (dec w) (dec h))
+          (.moveTo (-> (xy->plot-xp 1 1)
+                       (progress/p->int 0 (dec w)))
+                   (-> (xy->plot-yp 1 1)
+                       (progress/p->int 0 (dec h))))
           (.lineTo (-> (xy->plot-xp x2 y2)
                        (progress/p->int 0 (dec w)))
                    (-> (xy->plot-yp x2 y2)
@@ -107,7 +113,7 @@
             (recur)))))
 
     om/IRenderState
-    (render-state [_ {:keys [mousedown x+ y+]}]
+    (render-state [_ {:keys [mousedown x+ y+ w h]}]
       (dom/div
        nil
        (dom/div #js {:ref "topleft"
@@ -126,9 +132,20 @@
                                       nil)
                        :style #js {:cursor "pointer"
                                    :position "absolute"
-                                   :left (progress/percent plot-xp)
-                                   :top (progress/percent plot-yp)}}
+                                   :left (progress/p->int plot-xp 0 (dec w))
+                                   :top (progress/p->int plot-yp 0 (dec h))}}
                   (background-image "images/SliderKnob.png" 13 13 -6 -6)))))))
+
+;; TODO These axes need to stop implying a (0,0).
+;; Move them outward.
+
+(defn easing-display-component [easing owner]
+  (reify
+    om/IRenderState
+    (render-state [_ {:keys [x+ y+ w h]}]
+      (cnv/canvas easing w h
+                  (cnv/idwriter->painter
+                   (easing-idwriter easing x+ y+))))))
 
 (defn easing-picker-component [easing owner]
   (reify
@@ -137,75 +154,7 @@
       (dom/div #js {:style #js {:display "inline-block"
                                 :position "relative"
                                 :width w
-                                :height h
-                                :marginTop 10
-                                :marginBottom 20
-                                :marginLeft 20
-                                :borderBottom "1px solid #696969"
-                                :borderLeft "1px solid #696969"}}
-               (dom/div #js {:style
-                             #js {:position "absolute"
-                                  :left -20
-                                  :width 20
-                                  :height h
-                                  :font "10px Helvetica, Arial, sans-serif"
-                                  :color "#696969"}}
-                        (dom/div #js {:style #js {:position "absolute"
-                                                  :right 0
-                                                  :top 0
-                                                  :width 7
-                                                  :height 1
-                                                  :backgroundColor "black"}})
-                        (dom/div #js {:style #js {:position "absolute"
-                                                  :top -3
-                                                  :right 10}}
-                                 "Top")
-                        (dom/div #js {:style #js {:position "absolute"
-                                                  :right 0
-
-                                                  ;; adjusted to border
-                                                  :bottom -1
-
-                                                  :width 7
-                                                  :height 1
-                                                  :backgroundColor "black"}})
-                        (dom/div #js {:style #js {:position "absolute"
-                                                  :right 10
-                                                  :bottom -5
-                                                  :textAlign "center"}}
-                                 "Bottom"))
-               (dom/div #js {:style
-                             #js {:position "absolute"
-                                  :bottom -20
-                                  :width w
-                                  :height 20
-                                  :font "10px Helvetica, Arial, sans-serif"
-                                  :color "#696969"}}
-                        (dom/div #js {:style #js {:position "absolute"
-
-                                                  ;; adjusted to border
-                                                  :left -1
-
-                                                  :top 0
-                                                  :width 1
-                                                  :height 7
-                                                  :backgroundColor "black"}})
-                        (dom/div #js {:style #js {:position "absolute"
-                                                  :top 10
-                                                  :left -3}}
-                                 "0")
-                        (dom/div #js {:style #js {:position "absolute"
-                                                  :right 0
-                                                  :top 0
-                                                  :width 1
-                                                  :height 7
-                                                  :backgroundColor "black"}})
-                        (dom/div #js {:style #js {:position "absolute"
-                                                  :top 10
-                                                  :textAlign "center"
-                                                  :width 40
-                                                  :right -20}}
-                                 "wave's value"))
+                                :height h}}
                (dom/div #js {:style #js {:position "absolute"
                                          :width "100%"
                                          :height "100%"
@@ -229,6 +178,8 @@
                                     (lines-painter easing x+ y+)))
                (dom/div #js {:style #js {:position "relative"
                                          :zIndex 0}}
-                        (cnv/canvas easing w h
-                                    (cnv/idwriter->painter
-                                     (easing-idwriter easing x+ y+))))))))
+                        (om/build easing-display-component easing
+                                  {:state {:x+ x+
+                                           :y+ y+
+                                           :w w
+                                           :h h}}))))))

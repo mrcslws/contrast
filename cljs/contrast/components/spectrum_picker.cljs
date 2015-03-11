@@ -46,8 +46,6 @@
         (go-loop []
           (when-let [_ (<! started)]
             (om/set-state! owner :locked-position (:position @knob))
-            (when-let [listener (om/get-state owner :listener)]
-              (put! listener :started))
             (recur)))
 
         (go-loop []
@@ -62,8 +60,6 @@
         (go-loop []
           (when-let [_ (<! finished)]
             (om/set-state! owner :locked-position nil)
-            (when-let [listener (om/get-state owner :listener)]
-              (put! listener :finished))
             (recur))))
 
       (go-loop []
@@ -150,22 +146,8 @@
     (display-name [_]
       "spectrum-picker")
 
-    om/IInitState
-    (init-state [_]
-      {:knob-actions (chan)
-       :dragging false})
-
-    om/IWillMount
-    (will-mount [_]
-      (go-loop []
-        (when-let [action (<! (om/get-state owner :knob-actions))]
-          (case action
-            :started (om/set-state! owner :dragging true)
-            :finished (om/set-state! owner :dragging false))
-          (recur))))
-
     om/IRenderState
-    (render-state [_ {:keys [width knob-actions dragging]}]
+    (render-state [_ {:keys [width]}]
       (dom/div #js {:style #js {:position "relative"
                                 :width width
                                 :marginRight 12
@@ -220,17 +202,10 @@
                                            :top canvash}}
                                  (om/build color-knob-component
                                            (:left spectrum)
-                                           {:init-state {:listener
-                                                         knob-actions}
-                                            :state {:target-width width}}))
-                        (dom/div #js {:style
-                                      #js {:position "absolute"
-                                           :top canvash}}
+                                           {:state {:target-width width}})
                                  (om/build color-knob-component (:right
                                                                  spectrum)
-                                           {:init-state {:listener
-                                                         knob-actions}
-                                            :state {:target-width width}}))
+                                           {:state {:target-width width}}))
                         (let [idwriter (cnv/solid-vertical-stripe-idwriter
                                         ;; col -> [-1 1]
                                         #(dec (* 2 (/ % width)))

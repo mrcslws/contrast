@@ -221,39 +221,3 @@
                 (aset (+ base 2) b)
                 (aset (+ base 3) 255))))))
       imagedata)))
-
-
-(defn gradient-vertical-stripe-idwriter
-  [col->topx col->bottomx spectrum vertical-easing]
-  (fn write-gradient-vertical-stripes!
-    [imagedata]
-    (let [width (.-width imagedata)
-          height (.-height imagedata)
-          d (.-data imagedata)
-          cached-ps (js/Array. height)]
-
-      (easing/foreach-xy vertical-easing height
-                         (fn [y p]
-                           (aset cached-ps
-                                 (js/Math.round (* y height))
-                                 p)))
-
-      (dotimes [col width]
-        (let [topx (col->topx col)
-              r1 (spectrum/x->r spectrum topx)
-              g1 (spectrum/x->g spectrum topx)
-              b1 (spectrum/x->b spectrum topx)
-
-              botx (col->bottomx col)
-              r2 (spectrum/x->r spectrum botx)
-              g2 (spectrum/x->g spectrum botx)
-              b2 (spectrum/x->b spectrum botx)]
-          (dotimes [row height]
-            (let [p (aget cached-ps row)
-                  base (pixel/base width col row)]
-              (doto d
-                (aset base (progress/p->int p r1 r2))
-                (aset (+ base 1) (progress/p->int p g1 g2))
-                (aset (+ base 2) (progress/p->int p b1 b2))
-                (aset (+ base 3) 255))))))
-      imagedata)))
