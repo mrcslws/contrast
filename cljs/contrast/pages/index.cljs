@@ -494,13 +494,81 @@
                                          [:width :wave
                                           :harmonics :frequency]))))))))
 
+(defn drag-and-inspect [k owner]
+  (reify
+    om/IInitState
+    (init-state [_]
+      {:img (js/document.createElement "img")
+       :image-dropped false})
 
+    om/IRenderState
+    (render-state [_ {:keys [image-dropped]}]
+      (let [figure (om/observe owner (state/figure k))
+            {:keys [width height]} figure]
+        (dom/div #js {:style #js {:position "relative"
+                                  :display "inline-block"
+                                  :minWidth 300
+                                  :minHeight 300
+                                  :border (when-not image-dropped
+                                            "1px solid black")}
+                      :onDragOver #(.preventDefault %)
+                      :onDrop (fn [drop-evt]
+                                (.preventDefault drop-evt)
+                                (let [files (-> drop-evt .-dataTransfer .-files)
+                                      file (aget files 0)
+                                      rdr (js/FileReader.)]
+                                  (set! (.-onload rdr)
+                                        (fn [load-evt]
+                                          (om/set-state! owner :image-dropped true)
+                                          (om/update-state! owner :img
+                                                            (fn [img]
+                                                              (let [src (-> load-evt
+                                                                            .-target
+                                                                            .-result)]
+                                                                (set! (.-src img) src)
+                                                                (om/transact! figure
+                                                                              #(assoc %
+                                                                                 :img-src src
+                                                                                 :width (.-width img)
+                                                                                 :height (.-height img))))
+                                                              img))))
+                                  (.readAsDataURL rdr file)))}
+                 (if image-dropped
+                   (let [canary figure]
+                     (illusion
+                      (chan-genrender
+                       (fn [channel imgdata]
+                         (->> {:f canvas-component
+                               :props canary
+                               :m {:state {:width width
+                                           :height height}
+                                   :opts {:paint
+                                          (trace-rets
+                                           (fn [cnv]
+                                             (let [img (om/get-state owner :img)
+                                                   ctx (.getContext cnv "2d")]
+                                               (.drawImage ctx img 0 0)
+                                               (.getImageData ctx 0 0
+                                                              (.-width cnv)
+                                                              (.-height cnv))))
+                                           channel)}}}
+
+                              vector
+                              (hover-exposer k imgdata)
+                              (spec->row-probed k imgdata)))
+                       canary)))
+                   (dom/div #js {:style #js {:position "absolute"
+                                             :top "40%"
+                                             :width "100%"
+                                             :textAlign "center"}}
+                            "Drop an image here to inspect it.")))))))
 
 (defonce roots
   (atom
    {"1-twosides" [(fn [] single-gradient) :single-sinusoidal-gradient]
     "2-sweep-grating" [(fn [] sweep-grating) :sweep-grating]
-    "3-harmonic-grating" [(fn [] harmonic-grating) :harmonic-grating]}))
+    "3-harmonic-grating" [(fn [] harmonic-grating) :harmonic-grating]
+    "4-drag-and-inspect" [(fn [] drag-and-inspect) :drag-and-inspect]}))
 
 (defn workaround-component [_ _]
   (reify
@@ -602,7 +670,10 @@
                        :sweep-grating {:color-inspect {:selected-color nil}
                                        :row-inspect {:is-tracking? false
                                                      :locked {:probed-row 30}}}
-                       :harmonic-grating {:color-inspect {:selected-color nil}}}
+                       :harmonic-grating {:color-inspect {:selected-color nil}}
+                       :drag-and-inspect {:color-inspect {:selected-color nil}
+                                          :row-inspect {:is-tracking? false
+                                                        :locked {:probed-row 30}}}}
           :figures {:single-sinusoidal-gradient {:width 500
                                                  :height 256
                                                  :transition {:radius 250}
@@ -640,7 +711,8 @@
                                        :harmonic-magnitude "1 / n"
                                        :harmonics [1 3 5 7 9 11 13
                                                    15 17 19 21 23 25
-                                                   27 29 31 33 35 37 39]}}}))
+                                                   27 29 31 33 35 37 39]}
+                    :drag-and-inspect {:img-src nil}}}))
 
 (defonce code-reload-listen
   (let [reloads (chan)]

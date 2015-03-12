@@ -16,8 +16,8 @@
               sw (.-width stalkee)
               sh (.-height stalkee)
               sd (.-data stalkee)]
-          (assert (= sw width))
-          (assert (< sr sh))
+          ;; (assert (= sw width))
+          ;; (assert (< sr sh))
           (dotimes [row height]
             (dotimes [col width]
               (let [base (pixel/base width col row)
