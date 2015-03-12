@@ -517,22 +517,23 @@
                                 (let [files (-> drop-evt .-dataTransfer .-files)
                                       file (aget files 0)
                                       rdr (js/FileReader.)]
-                                  (set! (.-onload rdr)
-                                        (fn [load-evt]
-                                          (om/set-state! owner :image-dropped true)
-                                          (om/update-state! owner :img
-                                                            (fn [img]
-                                                              (let [src (-> load-evt
-                                                                            .-target
-                                                                            .-result)]
-                                                                (set! (.-src img) src)
-                                                                (om/transact! figure
-                                                                              #(assoc %
-                                                                                 :img-src src
-                                                                                 :width (.-width img)
-                                                                                 :height (.-height img))))
-                                                              img))))
-                                  (.readAsDataURL rdr file)))}
+                                  (when file
+                                    (set! (.-onload rdr)
+                                          (fn [load-evt]
+                                            (om/set-state! owner :image-dropped true)
+                                            (om/update-state! owner :img
+                                                              (fn [img]
+                                                                (let [src (-> load-evt
+                                                                              .-target
+                                                                              .-result)]
+                                                                  (set! (.-src img) src)
+                                                                  (om/transact! figure
+                                                                                #(assoc %
+                                                                                   :img-src src
+                                                                                   :width (.-width img)
+                                                                                   :height (.-height img))))
+                                                                img))))
+                                    (.readAsDataURL rdr file))))}
                  (if image-dropped
                    (let [canary figure]
                      (illusion
