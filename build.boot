@@ -1,17 +1,14 @@
 (set-env!
  :source-paths   #{"cljs"}
  :resource-paths #{"html" "js"}
- :dependencies '[[adzerk/boot-cljs "0.0-3058-0" :scope "test"]
+ :dependencies '[[adzerk/boot-cljs "0.0-2814-4" :scope "test"]
                  [adzerk/boot-cljs-repl "0.1.9" :scope "test"]
                  [adzerk/boot-reload "0.2.4" :scope "test"]
                  [pandeiro/boot-http "0.3.0" :scope "test"]
 
                  [org.clojure/core.async "0.1.346.0-17112a-alpha"]
                  [org.omcljs/om "0.8.8" :exclusions [cljsjs/react]]
-
-                 ;; Requires a version with change
-                 ;; https://github.com/mrcslws/packages/commit/76369523d3040ae05347b3863ef84dfb3f49b5a0
-                 [cljsjs/react "0.12.2-7"]])
+                 [cljsjs/react "0.12.2-8"]])
 
 (require
  '[adzerk.boot-cljs :refer [cljs]]

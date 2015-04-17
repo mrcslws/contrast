@@ -30,7 +30,7 @@
                                   :left 0
                                   :right 0
                                   :backgroundColor "rgba(0,0,0,0.8)"}}
-                 (dom/div #js {:style #js {:fontFamily "Consolas, Liberation Mono, Courier, monospace;"
+                 (dom/div #js {:style #js {:fontFamily "Consolas, Liberation Mono, Courier, monospace"
                                            :fontWeight "bold"
                                            :color "white"}}
                           (dom/table #js {:style #js {:width "100%"
