@@ -1,6 +1,7 @@
 (ns contrast.state
   (:require [om.core :as om :include-macros true]))
 
+;; Note: other code currently assumes {} to be the uninitialized value.
 (defonce app-state
   (atom {}))
 

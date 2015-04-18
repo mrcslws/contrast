@@ -44,7 +44,8 @@
 (defn algorithm [& els]
   (dom/div #js {:style #js {:display "inline-block"
                             :marginLeft 24
-                            :verticalAlign "top"}}
+                            :verticalAlign "top"
+                            :minWidth 300}}
            (apply
             dom/div
             #js {:style
@@ -287,6 +288,117 @@
             (aset (+ base 3) 255)))))
     imgdata))
 
+(defn sweep-grating-number-chooser [figure owner]
+  (reify
+    om/IDisplayName
+    (display-name [_]
+      "sweep-grating-number-choosing")
+
+    om/IRender
+    (render [_]
+      (let [{:keys [width]} figure]
+        (section
+         (heading "Create numbers between -1 and 1 using a wave:")
+
+         (indented
+          (line "Create a " (name (get-in figure [:wave :form])) " wave.")
+          (line (om/build wave-picker-component {:target (:wave figure)
+                                                 :schema {:key :form}}))
+          (line)
+          (line "On the left, use a period of")
+          (indented
+           (line (label-pixels (get-in figure [:left-period :period]))
+                 (slider {:width 180
+                          :position "absolute"
+                          :right 13
+                          :top -18}
+                         (:left-period figure)
+                         {:key :period
+                          :min 1
+                          :max 1000
+                          :str-format "%dpx"
+                          :interval 1})))
+          (line)
+
+          (line "On the right, use a period of"
+                (indented
+                 (line (label-pixels (get-in figure [:right-period :period]))
+                       (slider {:width 180
+                                :position "absolute"
+                                :right 13
+                                :top -18}
+                               (:right-period figure)
+                               {:key :period
+                                :min 1
+                                :max 1000
+                                :str-format "%dpx"
+                                :interval 1}))))
+          (line)
+          (let [w 300
+                h 200
+                {:keys [horizontal-easing left-period right-period wave]} figure
+                wave (:form wave)
+                left-period (:period left-period)
+                right-period (:period right-period)]
+            (line
+             (dom/div #js {:style #js {:display "inline-block"
+                                       :position "relative"
+                                       :width w
+                                       :height h
+                                       :marginLeft 25
+                                       :marginRight 10
+                                       :marginBottom 25}}
+                      (left-axis h
+                                 (label-pixels (get-in figure [:right-period :period]))
+                                 (label-pixels (get-in figure [:left-period :period]))
+                                 10)
+                      (dom/div #js {:style #js {:position "absolute"
+                                                :width "100%"
+                                                :height "100%"
+                                                :zIndex 0}}
+                               (cnv/canvas [wave horizontal-easing left-period right-period]
+                                           w h
+                                           (cnv/idwriter->painter
+                                            (accelerating-wave-easing-idwriter
+                                             wave left-period right-period width horizontal-easing))))
+                      (dom/div #js {:style #js {:position "absolute"
+                                                :width "100%"
+                                                :height "100%"
+                                                :zIndex 1}}
+                               (om/build easing-picker-component horizontal-easing
+                                         {:state {:w w
+                                                  :h h
+                                                  :x+ :right
+                                                  :y+ :up}}))
+                      (right-axis (quot h 2) "1" "-1" 10 (quot h 4))
+                      (bottom-axis w "Left" "Right" 10))))))))))
+
+(defn sweep-grating-color-chooser [k owner]
+  (reify
+    om/IDisplayName
+    (display-name [_]
+      "sweep-grating-color-chooser")
+
+    om/IRender
+    (render [_]
+      (let [figure (om/observe owner (state/figure k))]
+        (section
+         (heading "Translate these numbers into color:")
+
+         (line "Dampen the numbers according to their height, and then translate to color.")
+         ;; TODO clearly I can do better.
+         (dom/div #js {:style #js {:marginTop 20}})
+
+         (indented (om/build damped-spectrum-picker-component figure
+                             {:opts {:canvas-spec-transform
+                                     (fn [spec imgdata]
+                                       (eyedropper-zone-spec
+                                        k {:key :selected-color} imgdata
+                                        [{:f color-exposer-component
+                                          :props k
+                                          :m {:state {:imagedata imgdata}}
+                                          :children [spec]}]))}})))))))
+
 (defn sweep-grating [k owner]
   (reify
     om/IDisplayName
@@ -316,99 +428,8 @@
                           (spec->row-probed k imgdata)))
                    canary))
                  (algorithm
-
-                  (section
-                   (heading "Create numbers between -1 and 1 using a wave:")
-
-                   (indented
-                    (line "Create a " (name (get-in figure [:wave :form])) " wave.")
-                    (line (om/build wave-picker-component {:target (:wave figure)
-                                                           :schema {:key :form}}))
-                    (line)
-                    (line "On the left, use a period of")
-                    (indented
-                     (line (label-pixels (get-in figure [:left-period :period]))
-                           (slider {:width 180
-                                    :position "absolute"
-                                    :right 13
-                                    :top -18}
-                                   (:left-period figure)
-                                   {:key :period
-                                    :min 1
-                                    :max 1000
-                                    :str-format "%dpx"
-                                    :interval 1})))
-                    (line)
-
-                    (line "On the right, use a period of"
-                          (indented
-                           (line (label-pixels (get-in figure [:right-period :period]))
-                                 (slider {:width 180
-                                          :position "absolute"
-                                          :right 13
-                                          :top -18}
-                                         (:right-period figure)
-                                         {:key :period
-                                          :min 1
-                                          :max 1000
-                                          :str-format "%dpx"
-                                          :interval 1}))))
-                    (line)
-                    (let [w 300
-                          h 200
-                          {:keys [horizontal-easing left-period right-period wave]} figure
-                          wave (:form wave)
-                          left-period (:period left-period)
-                          right-period (:period right-period)]
-                      (line
-                       (dom/div #js {:style #js {:display "inline-block"
-                                                 :position "relative"
-                                                 :width w
-                                                 :height h
-                                                 :marginLeft 25
-                                                 :marginRight 10
-                                                 :marginBottom 25}}
-                                (left-axis h
-                                           (label-pixels (get-in figure [:right-period :period]))
-                                           (label-pixels (get-in figure [:left-period :period]))
-                                           10)
-                                (dom/div #js {:style #js {:position "absolute"
-                                                          :width "100%"
-                                                          :height "100%"
-                                                          :zIndex 0}}
-                                         (cnv/canvas [wave horizontal-easing left-period right-period]
-                                                     w h
-                                                     (cnv/idwriter->painter
-                                                      (accelerating-wave-easing-idwriter
-                                                       wave left-period right-period width horizontal-easing))))
-                                (dom/div #js {:style #js {:position "absolute"
-                                                          :width "100%"
-                                                          :height "100%"
-                                                          :zIndex 1}}
-                                         (om/build easing-picker-component horizontal-easing
-                                                   {:state {:w w
-                                                            :h h
-                                                            :x+ :right
-                                                            :y+ :up}}))
-                                (right-axis (quot h 2) "1" "-1" 10 (quot h 4))
-                                (bottom-axis w "Left" "Right" 10))))))
-
-                  (section
-                   (heading "Translate these numbers into color:")
-
-                   (line "Dampen the numbers according to their height, and then translate to color.")
-                   ;; TODO clearly I can do better.
-                   (dom/div #js {:style #js {:marginTop 20}})
-
-                   (indented (om/build damped-spectrum-picker-component figure
-                                       {:opts {:canvas-spec-transform
-                                               (fn [spec imgdata]
-                                                 (eyedropper-zone-spec
-                                                  k {:key :selected-color} imgdata
-                                                  [{:f color-exposer-component
-                                                    :props k
-                                                    :m {:state {:imagedata imgdata}}
-                                                    :children [spec]}]))}})))))))))
+                  (om/build sweep-grating-number-chooser figure)
+                  (om/build sweep-grating-color-chooser k)))))))
 (defn simple-grating [k owner]
   (reify
     om/IDisplayName
@@ -447,6 +468,58 @@
                               :str-format "%.1f cycles"
                               :interval 0.1}))))))))))
 
+(defn harmonic-grating-number-chooser [figure owner]
+  (reify
+    om/IDisplayName
+    (display-name [_]
+      "harmonic-grating-number-chooser")
+
+    om/IRender
+    (render [_]
+      (section
+       (heading "For each n ∈ "
+                (numvec-editable {:width 300 :display "inline"}
+                                 figure {:key :harmonics}))
+
+       (indented
+        (line "Create a " (name (get-in figure [:wave :form])) " wave "
+              (om/build wave-picker-component {:target (:wave figure)
+                                               :schema {:key :form}}))
+        (line "with amplitude 1/n")
+        (line " and period 1/n * " (get-in figure [:frequency :period])
+              " pixels."
+              (slider {:position "absolute"
+                       :right 13
+                       :top -20
+                       :width 180}
+                      (:frequency figure)
+                      {:key :period
+                       :min 1
+                       :max 5000
+                       :str-format "%dpx"
+                       :interval 1})))))))
+
+(defn harmonic-grating-color-chooser [k owner]
+  (reify
+    om/IDisplayName
+    (display-name [_]
+      "harmonic-grating-color-chooser")
+
+    om/IRender
+    (render [_]
+      (let [figure (om/observe owner (state/figure k))]
+        (section
+         (heading "Use the sum of these waves to choose the color:")
+         (indented (line (spectrum-picker-spec
+                          (:spectrum figure) 360
+                          (fn [spec imgdata]
+                            (eyedropper-zone-spec
+                             k {:key :selected-color} imgdata
+                             [{:f color-exposer-component
+                               :props k
+                               :m {:state {:imagedata imgdata}}
+                               :children [spec]}]))))))))))
+
 (defn harmonic-grating [k owner]
   (reify
     om/IDisplayName
@@ -477,40 +550,8 @@
                   spec/render))
            canary))
          (algorithm
-          (section
-           (heading "For each n ∈ "
-                    (numvec-editable {:width 300 :display "inline"}
-                                     figure {:key :harmonics}))
-
-           (indented
-            (line "Create a " (name (get-in figure [:wave :form])) " wave "
-                  (om/build wave-picker-component {:target (:wave figure)
-                                                   :schema {:key :form}}))
-            (line "with amplitude 1/n")
-            (line " and period 1/n * " (get-in figure [:frequency :period])
-                  " pixels."
-                  (slider {:position "absolute"
-                           :right 13
-                           :top -20
-                           :width 180}
-                          (:frequency figure)
-                          {:key :period
-                           :min 1
-                           :max 5000
-                           :str-format "%dpx"
-                           :interval 1}))))
-
-          (section
-           (heading "Use the sum of these waves to choose the color:")
-           (indented (line (spectrum-picker-spec
-                            (:spectrum figure) 360
-                            (fn [spec imgdata]
-                              (eyedropper-zone-spec
-                               k {:key :selected-color} imgdata
-                               [{:f color-exposer-component
-                                 :props k
-                                 :m {:state {:imagedata imgdata}}
-                                 :children [spec]}])))))))
+          (om/build harmonic-grating-number-chooser figure)
+          (om/build harmonic-grating-color-chooser k))
          ;; (dom/div #js {:style #js {:marginTop 12
          ;;                           :paddingLeft 14}}
          ;;          (when-let [[r g b a]
@@ -525,6 +566,10 @@
 
 (defn drag-and-inspect [k owner]
   (reify
+    om/IDisplayName
+    (display-name [_]
+      "drag-and-inspect")
+
     om/IInitState
     (init-state [_]
       {:img (js/document.createElement "img")

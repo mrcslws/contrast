@@ -1,7 +1,9 @@
 (ns contrast.pages.crafting-graphs
   (:require [cljs.core.async :refer [put! chan mult tap close! <!]]
             [contrast.components.fixed-table :refer [fixed-table-component]]
+            [contrast.components.slider :refer [slider]]
             [contrast.components.state-display :refer [state-display-component]]
+            [contrast.components.wave-display :refer [wave-display-component]]
             [contrast.hotkeys :as hotkeys]
             [contrast.instrumentation :as instrumentation]
             [contrast.pages.shared-content :as shared]
@@ -13,12 +15,102 @@
 
 (enable-console-print!)
 
+(defn plain-algorithm [k owner]
+  (reify
+    om/IDisplayName
+    (display-name [_]
+      "plain-algorithm")
+
+    om/IRender
+    (render [_]
+      (let [figure (om/observe owner (state/figure k))]
+        (shared/algorithm
+         (shared/section
+          (shared/heading "Explorable fixed algorithm")
+          (shared/line "Use a period of")
+          (shared/indented
+           (shared/line (shared/label-pixels (get-in figure [:period]))
+                        (slider {:width 180
+                                 :position "absolute"
+                                 :right 13
+                                 :top -23}
+                                figure
+                                {:key :period
+                                 :min 1
+                                 :max 1000
+                                 :str-format "%dpx"
+                                 :interval 1})))))))))
+
+(defn sweep-grating-number-chooser [k owner]
+  (reify
+    om/IDisplayName
+    (display-name [_]
+      "sweep-grating-number-chooser")
+
+    om/IRender
+    (render [_]
+      (let [figure (om/observe owner (state/figure k))]
+        (shared/algorithm
+         (om/build shared/sweep-grating-number-chooser figure))))))
+
+(defn harmonic-grating-number-chooser [k owner]
+  (reify
+    om/IDisplayName
+    (display-name [_]
+      "harmonic-grating-number-chooser")
+
+    om/IRender
+    (render [_]
+      (let [figure (om/observe owner (state/figure k))]
+        (dom/div nil
+                 (shared/algorithm
+                  (om/build shared/harmonic-grating-number-chooser figure)
+                  (shared/section
+                   (shared/heading "Use the sum of these waves...")))
+                 (dom/div #js {:style #js {:marginTop 12
+                                           :marginLeft 24}}
+                          (om/build wave-display-component
+                                    (select-keys figure
+                                                 [:width :wave
+                                                  :harmonics :frequency]))))))))
+
+(defn harmonic-grating-color-chooser [k owner]
+  (reify
+    om/IDisplayName
+    (display-name [_]
+      "harmonic-grating-color-chooser")
+
+    om/IRender
+    (render [_]
+      (shared/algorithm
+       (om/build shared/harmonic-grating-color-chooser k)))))
+
+(defn sweep-grating-color-chooser [k owner]
+  (reify
+    om/IDisplayName
+    (display-name [_]
+      "sweep-grating-color-chooser")
+
+    om/IRender
+    (render [_]
+      (shared/algorithm
+       (om/build shared/sweep-grating-color-chooser k)))))
+
 (defonce roots
   (atom
    {"simple-grating" [(fn [] shared/simple-grating) :simple-grating]
     "2-sweep-grating" [(fn [] shared/sweep-grating) :sweep-grating]
     "3-harmonic-grating" [(fn [] shared/harmonic-grating) :harmonic-grating]
-    "4-drag-and-inspect" [(fn [] shared/drag-and-inspect) :drag-and-inspect]}))
+    "4-drag-and-inspect" [(fn [] shared/drag-and-inspect) :drag-and-inspect]
+    "plain-algorithm" [(fn [] plain-algorithm) :plain-algorithm]
+    "sweep-grating-number-chooser" [(fn [] sweep-grating-number-chooser)
+                                     :sweep-grating-choosers]
+    "harmonic-grating-number-chooser" [(fn [] harmonic-grating-number-chooser)
+                                       :harmonic-grating-choosers]
+    "harmonic-grating-color-chooser" [(fn [] harmonic-grating-color-chooser)
+                                      :harmonic-grating-choosers]
+    "sweep-grating-color-chooser" [(fn [] sweep-grating-color-chooser)
+                                      :sweep-grating-choosers]}))
 
 (defn workaround-component [_ _]
   (reify
@@ -103,15 +195,16 @@
                    (reset! state/component-data {}))}]
     (hotkeys/assoc-global m f)))
 
-(defonce renderqueue-workaround
-  (let [el (js/document.createElement "div")]
-    (.setAttribute el "id" "renderqueue-workaround")
-    (js/document.body.appendChild el)))
-
 ;; For sliders, editors, etc., it's useful to box its value in a dedicated data
 ;; structure so that it doesn't have to rerender every time a sibling value
 ;; changes.
-(defonce initialize-state
+;; Use (when ...) rather than (defonce ...) because boot-reload sometimes
+;; injects pages into one another, so defonce isn't sufficient.
+(when (= @state/app-state {})
+  (let [el (js/document.createElement "div")]
+    (.setAttribute el "id" "renderqueue-workaround")
+    (js/document.body.appendChild el))
+
   (swap! state/app-state merge
          {:hood-open? false
           :inspectors {:sweep-grating {:color-inspect {:selected-color nil}
@@ -161,9 +254,41 @@
                                        :harmonics [1 3 5 7 9 11 13
                                                    15 17 19 21 23 25
                                                    27 29 31 33 35 37 39]}
-                    :drag-and-inspect {:img-src nil}}}))
+                    :drag-and-inspect {:img-src nil}
+                    :plain-algorithm {:period 20}
 
-(defonce code-reload-listen
+                    :sweep-grating-choosers {:width 500
+                                             :height 256
+                                             :wave {:form :sine}
+                                             :left-period {:period 345}
+                                             :right-period {:period 90}
+
+                                             :horizontal-easing {:p1 {:x 0.25
+                                                                      :y 0.50}
+                                                                 :p2 {:x 0.70
+                                                                      :y 0.70}}
+                                             :vertical-easing {:p1 {:x 0.25
+                                                                    :y 0.50}
+                                                               :p2 {:x 0.70
+                                                                    :y 0.70}}
+
+                                             :spectrum {:left {:color [0 102 255]
+                                                               :position -1}
+                                                        :right {:color [176 57 255]
+                                                                :position 1}}}
+                    :harmonic-grating-choosers {:width 410
+                                                :height 256
+                                                :frequency {:period 100}
+                                                :spectrum {:left {:color [47 55 255]
+                                                                  :position -1}
+                                                           :right {:color [0 240 255]
+                                                                   :position 1}}
+                                                :wave {:form :triangle}
+                                                :harmonic-magnitude "1 / n"
+                                                :harmonics [1 3 5 7 9 11 13
+                                                            15 17 19 21 23 25
+                                                            27 29 31 33 35 37 39]}}})
+
   (let [reloads (chan)]
     (tap page-triggers/code-reloads reloads)
     (go-loop []

@@ -1,7 +1,9 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <title>Crafting images via graphs</title>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <title>Graphics from graphs</title>
     <link href="css/style.css" rel="stylesheet" type="text/css">
     <style type="text/css">
 
@@ -77,6 +79,13 @@
       width: 300px;
       }
 
+      .meta {
+      font-size: 11px;
+      color: #828282;
+      text-transform: uppercase;
+      margin-top: -14px;
+      }
+
     </style>
   </head>
   <body>
@@ -87,7 +96,8 @@
     </header>
     <div class="wrapper">
       <div>
-	<h1>Crafting images via graphs</h1>
+	<h1>Graphics from graphs</h1>
+	<p class="meta">April 2015</p>
 	<p>In my studies, I encountered some images, and I wanted to explore them. I wanted to check the colors of pixels, to tweak parameters and see what happened. The textbook didn't offer that feature, so I took matters into my own hands.</p>
 	<p>I reverse-engineered the images into an inspectable, tweakable form. I paced back and forth for a while and discovered the UI that each image deserved, then built it.</p>
 	<p>As I created multiple images and untangled what they had in common, it became clearer and clearer what I was actually doing: creating 3D graphs and using <em>color</em> as the third dimension.</p>
@@ -164,8 +174,37 @@
       <h3>Drag and inspect</h3>
       <p>Drag an image from your computer to inspect its color and rows.</p>
       <div id="4-drag-and-inspect"></div>
-      <h2>A breakdown of the knobs</h2>
-      <p>I'm still writing!</p>
+      <h2>Breaking down the knobs</h2>
+      <p>Here are some design notes. I like clear thinking, and I think I have some to share.</p>
+      <p>Let's call this an "explorable fixed algorithm".</p>
+      <div id="plain-algorithm"></div>
+      <p>I stole this from <a href="http://worrydream.com/LadderOfAbstraction/">Bret Victor</a>. I even used his slider PNGs. Thanks, Bret!</p>
+      <p>These can be wonderfully tweakable. But they're also fixed -- you can't add and remove steps from the algorithm. The author has to anticipate all the fruitful knobs and levers. Solving this limitation is mostly out of scope for this essay.</p>
+      <p>Within these algorithms we <strong>choose numbers</strong>, we <strong>transform numbers</strong>, and we <strong>translate numbers into colors</strong>. In the harmonic grating, I packed "choose numbers" and "transform numbers" into one step, whereas in the sweep grating, I lumped "transform numbers" in with "translate into colors".</p>
+      <h3>Choosing numbers</h3>
+      <p>In the <strong>sweep grating</strong>, we choose a number for each column of pixels.</p>
+      <div id="sweep-grating-number-chooser"></div>
+      <p>The explorable algorithm lets you choose the type of wave, and it lets you vary the wave's period over space. The wave is shown in the background so that you can see what you're doing.</p>
+      <p>On the varying period, I give myself an A. It's easy to comprehend, and it's very flexible. You choose two endpoints, and you adjust a Cubic Bézier curve to choose the interpolation between these endpoints (i.e. the <a href="http://mrcslws.com/blocks/2015/02/26/using-bezier-curves-as-easing-functions.html">easing function</a>). Here's why this is so good: it breaks free of math. You're no longer bound by the world of equations. You're <a href="http://en.wikipedia.org/wiki/Variety_(cybernetics)#The_law_of_requisite_variety">manipulating a visual thing by using a visual thing.</a></p>
+      <p>On the wave picker, I give myself a C, for predictable reasons. There's an infinite number of ways to oscillate between -1 and 1, and I provided... 4 options? A better design would offer a "cycle this Bézier curve" option.</p>
+      <h3>Choosing + transforming numbers</h3>
+      <p>In the <strong>grating with harmonics</strong>, we choose a number for each column of pixels, then choose another and compute the sum, and so on. It's an imperative loop.</p>
+      <div id="harmonic-grating-number-chooser"></div>
+      <p>These numbers are mostly visualized. Each wave is in the background, and the resulting wave is in the foreground.</p>
+      <p>My favorite part is the editable number list. Play with it! The visualization updates as you type. See what happens with "1 2 3 4 5".</p>
+      <p>There are some obvious missing features. The "1/n" should be tweakable. Similar to above, "choose one of these 4 waves" is limiting. And if we want to get really crazy: what if I want to combine different types of wave?</p>
+      <h3>Translating numbers into color</h3>
+      <p>In the <strong>grating with harmonics</strong>, we simply translate each number into color using a tweakable legend.</p>
+      <div id="harmonic-grating-color-chooser"></div>
+      <p>The color knobs are adjustable. You can move them, and you can change their color. You create a linear gradient, and the legend extrapolates this gradient past the knobs.</p>
+      <p>The color knobs use your browser's built-in color picker, or fall back to a live-updating text input.</p>
+      <p>One critique: this legend doesn't warn you when you create invalid colors. When it extrapolates past the knob, it will happily choose an RGB value outside of the [0, 255] range. Browsers will quietly convert this number to the appropriate boundary.</p>
+      <h3>Transforming numbers + translating into color</h3>
+      <p>In the <strong>sweep grating</strong>, we use the previously-selected per-column number, we damp it toward 0 according to its pixel row, and we translate it into color.</p>
+      <p>Another way to think of this: we apply a varying legend to the numbers that we chose. The legend varies by row.</p>
+      <div id="sweep-grating-color-chooser"></div>
+      <p>To help you see what you're doing, I show little thingies that I call "feature trackers". </p>
+      <p>[I'm still writing!]</p>
     </div>
     <script src="crafting_graphs.js" type="text/javascript"></script>
   </body>

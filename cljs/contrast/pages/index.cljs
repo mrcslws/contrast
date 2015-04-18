@@ -103,15 +103,17 @@
                    (reset! state/component-data {}))}]
     (hotkeys/assoc-global m f)))
 
-(defonce renderqueue-workaround
-  (let [el (js/document.createElement "div")]
-    (.setAttribute el "id" "renderqueue-workaround")
-    (js/document.body.appendChild el)))
-
 ;; For sliders, editors, etc., it's useful to box its value in a dedicated data
 ;; structure so that it doesn't have to rerender every time a sibling value
 ;; changes.
-(defonce initialize-state
+;; Use (when ...) rather than (defonce ...) because boot-reload sometimes
+;; injects pages into one another, so defonce isn't sufficient.
+(when (= @state/app-state {})
+
+  (let [el (js/document.createElement "div")]
+    (.setAttribute el "id" "renderqueue-workaround")
+    (js/document.body.appendChild el))
+
   (swap! state/app-state merge
          {:hood-open? false
           :inspectors {:single-sinusoidal-gradient {:color-inspect {:selected-color nil}
@@ -162,9 +164,8 @@
                                        :harmonics [1 3 5 7 9 11 13
                                                    15 17 19 21 23 25
                                                    27 29 31 33 35 37 39]}
-                    :drag-and-inspect {:img-src nil}}}))
+                    :drag-and-inspect {:img-src nil}}})
 
-(defonce code-reload-listen
   (let [reloads (chan)]
     (tap page-triggers/code-reloads reloads)
     (go-loop []
