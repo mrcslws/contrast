@@ -113,7 +113,7 @@
                                 ;; default, unaligned with text next to it, but
                                 ;; it's good to force the consumer to make room
                                 ;; for the animation (or choose not to).
-                                :marginTop 26
+                                :marginTop 31
                                 :marginBottom 4
                                 :height 4}}
                (om/build slider-unchanging-background nil)
@@ -144,7 +144,7 @@
                                    :left (- (- (quot wlabel 2)
                                                (quot wknob 2)))
 
-                                   :top -13
+                                   :top -18
                                    :height 10
                                    :display (if is-tracking?
                                               "block" "none")}}
@@ -184,7 +184,7 @@
         :m {:state {:moves moves
                     :clicks clicks
                     :exits exits
-                    :underlap-x 10}}
+                    :underlap-x 20}}
         :children [{:f slider-component-internal
                     :props v
                     :m {:state {:moves moves

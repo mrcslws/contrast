@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Crafting images via graphs</title>
+    <link href="css/style.css" rel="stylesheet" type="text/css">
+    <style type="text/css">
+
+      body {
+      font-family: Helvetica, Arial, clean, sans-serif;
+      font-size: 14.5px;
+      line-height: 1.5;
+      margin: 0;
+      padding: 0;
+      color: #111;
+      background-color:#fdfdfd;
+      }
+
+      a {
+      text-decoration: none;
+      }
+
+      .comic {
+      display: inline-block;
+      margin-right: 30px;
+      }
+
+      .comic:last-child {
+      margin-right: 0;
+      }
+
+      .caption {
+      display:inline-block;
+      max-width:165px;
+      vertical-align: top;
+      }
+
+      .quoted {
+      border: 1px solid black;
+      padding:10px;
+      }
+
+      p {
+      max-width: 600px;
+      }
+
+      .site-header {
+      border-top: 5px solid #424242;
+      border-bottom: 1px solid #e8e8e8;
+      min-height: 56px;
+      position: relative;
+      }
+
+      .site-title {
+      font-size: 18px;
+      line-height: 56px;
+      letter-spacing: -1px;
+      margin-bottom: 0;
+      float: left;
+      }
+
+      .site-title, .site-title:visited {
+      color: #a00;
+      }
+
+      .wrapper {
+      max-width: 800px;
+      padding-left: 30px;
+      }
+
+      .wrapper:after, .footer-col-wrapper:after {
+      content: "";
+      display: table;
+      clear: both;
+      }
+
+      .harmonicGratingImage {
+      width: 300px;
+      }
+
+    </style>
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="wrapper">
+	<a class="site-title" href="/">Marcus Lewis</a>
+      </div>
+    </header>
+    <div class="wrapper">
+      <div>
+	<h1>Crafting images via graphs</h1>
+	<p>In my studies, I encountered some images, and I wanted to explore them. I wanted to check the colors of pixels, to tweak parameters and see what happened. The textbook didn't offer that feature, so I took matters into my own hands.</p>
+	<p>I reverse-engineered the images into an inspectable, tweakable form. I paced back and forth for a while and discovered the UI that each image deserved, then built it.</p>
+	<p>As I created multiple images and untangled what they had in common, it became clearer and clearer what I was actually doing: creating 3D graphs and using <em>color</em> as the third dimension.</p>
+	<p>This got me thinking: is it really this difficult to create images by creating graphs? What general-purpose tool could have created these images? The problem with the explorable images on this page is that they took too long to create. Students and scientists need to spend their time thinking about their domain, not about optimizing an HTML canvas's inner loop.</p>
+	<p>I haven't found the answer. I don't have a general-purpose tool to show you. But I'll show you the explorable images, and I'll show some very early sketches of the tool that I wish existed.</p>
+	<h2>Background: Gratings in visual perception</h2>
+	<p>Optical illusions are an important part of the science of visual perception. Each illusion is a hint into how the brain works. It's a bit of evidence that we can use to figure out what's going on behind the scene.</p>
+	<p><em>Spatial frequency</em> has taken hold as a <a href="http://en.wikipedia.org/wiki/Language_primitive">primitive</a> in vision theory. Here, play with this:</p>
+	<div id="simple-grating"></div>
+	<p>That's spatial frequency.</p>
+	<p>When you move your eyes, you rotate them a certain number of degrees. In vision science, spatial frequency is measured in cycles per degree of the visual field.</p>
+	<p>Part of the reason spatial frequency gets a lot of <a href="https://scholar.google.com/scholar?q=spatial+frequency">air time</a> is because we've shown its profound relevance via optical illusions.</p>
+	<p>Copied below: Some illustrations and descriptions from the original 1974 Scientific American paper and from a recent textbook.</p>
+	<h3>Grating with harmonics</h3>
+	<p>Here's a set of images and descriptions from a Scientific American paper. I split the images and descriptions into a more <a href="http://worrydream.com/ScientificCommunicationAsSequentialArt/">comic-book</a> form.</p>
+	<div class="quoted" style="width:975px;">
+	  <p>GRATING PATTERNS shown here are photographs of patterns produced on the screen of a cathode ray tube by a voltage-modulating generator.</p>
+	  <div>
+	    <div class="comic">
+	      <img src="images/ScientificAmericanHarmonicGratingA.png" class="harmonicGratingImage" />
+	      <p class="caption">A simple grating is produced by a single sine wave signal from the voltage generator. The brightness of each vertical bar in this simple grating varies in a sinusoidal manner in the horizontal direction across the pattern.</p>
+	    </div>
+	    <div class="comic">
+	      <p class="caption">A more complex grating is formed by the addition of the <strong>third harmonic</strong> of the fundamental sine wave. The third harmonic has three times the frequency and a third of the amplitude of the fundamental wave.</p>
+	      <img src="images/ScientificAmericanHarmonicGratingB.png" class="harmonicGratingImage" />
+	    </div>
+	  </div>
+	  <p>As the frequency of the light and dark bands increases with the addition of...</p>
+	  <div>
+	    <div class="comic">
+	      <p><strong>the fifth harmonic,</strong></p>
+	      <img src="images/ScientificAmericanHarmonicGratingC.png" class="harmonicGratingImage" />
+	    </div>
+	    <div class="comic">
+	      <p><strong>the seventh,</strong></p>
+	      <img src="images/ScientificAmericanHarmonicGratingD.png" class="harmonicGratingImage" />
+	    </div>
+	    <div class="comic">
+	      <p><strong>and the ninth,</strong></p>
+	      <img src="images/ScientificAmericanHarmonicGratingE.png" class="harmonicGratingImage" />
+	    </div>
+	  </div>
+	  <p>the individual bands formed by the harmonics become progressively more difficult to see.</p>
+	  <div>
+	    <p class="caption" style="max-width: 330px;">With the addition of <strong>the 15th harmonic</strong> only a square-wave pattern is perceived. </p>
+	    <img src="images/ScientificAmericanHarmonicGratingF.png" class="harmonicGratingImage" />
+	  </div>
+	  <p style="max-width: 800px;">Studies of contrast perception with simple and complex grating patterns such as these indicate that the visual system possesses a number of separate "channels," each spatial tuned to detect a relatively narrow range of spatial frequencies and each with its own range of sensitivity to contrast.</p>
+	  <p>Source: Campwell, F.W. and Maffei, L. (1974). Contrast and spatial frequency. <em>Scientific American</em> 231, 106-13</p>
+	</div>
+	<h3>Sweep grating</h3>
+	<p>Here's another image from the 1974 Scientific American paper:</p>
+	<div class="quoted">
+	  <img src="images/ScientificAmericanSweepGrating.png" width="490" />
+	  <p class="caption">SINUSOIDAL GRATING with a logarithmic variation in spatial frequency and in contrast demonstrates the loss of contrast sensitivity at low and high spatial frequencies. The contrast decreases from the bottom to the top, but at any one height it is the same for all spatial frequencies. When the grating is viewed, it is apparent that the intermediate spatial frequencies are visible to much lower contrast than either the low or the high spatial frequencies.</p>
+	  <p>Source: Campwell, F.W. and Maffei, L. (1974). Contrast and spatial frequency. <em>Scientific American</em> 231, 106-13</p>
+	</div>
+	<p>This image was printed to a magazine in 1974 and then scanned back into a computer, so it's hard to say how similar it is to the original. A cleaner version can be seen in recent textbooks:</p>
+	<div class="quoted">
+	  <img src="images/BasicVisionSpatialFrequency.png" width="310" style="margin-top:25px; margin-right: 10px;" />
+	  <img src="images/BasicVisionSensitivity.png" width="327" style="vertical-align:top;" />
+	  <p>Contrast sensitivity at various spatial frequencies. The spatial frequency of this grating increases from low at the left to high at the right, and the contrast increases from top to bottom. Clearly, we are most sensitive to some middle spatial frequency, with lower sensitivity to both high and low spatial frequencies.</p>
+	  <p>Source: <a href="http://www.amazon.com/Basic-Vision-Introduction-Visual-Perception/dp/019957202X">Basic Vision</a>, Snowden, Thompson, Troscianko, Oxford University Press 2012</p>
+	</div>
+	<p>But to really convince yourself of this effect, you need to be able to inspect the image. You can't just take the author's word for it. They tell you that what you see is an illusion, but is it really? Is spatial frequency really the thing responsible for these effects?</p>
+      </div>
+      <h2>Explorable images</h2>
+      <p>This is where I step in.</p>
+      <p>These "explorable images" are a special case of <a href="http://worrydream.com/ExplorableExplanations/">explorable explanations</a>. This ought to become the new normal for publications.</p>
+      <h3>Grating with harmonics</h3>
+      <div id="3-harmonic-grating" style="width:1000px;"></div>
+      <h3>Sweep grating</h3>
+      <div id="2-sweep-grating" style="width:1000px;"></div>
+      <h3>Drag and inspect</h3>
+      <p>Drag an image from your computer to inspect its color and rows.</p>
+      <div id="4-drag-and-inspect"></div>
+      <h2>A breakdown of the knobs</h2>
+      <p>I'm still writing!</p>
+    </div>
+    <script src="crafting_graphs.js" type="text/javascript"></script>
+  </body>
+</html>

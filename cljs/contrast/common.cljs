@@ -92,7 +92,8 @@
 (defn harmonic-adder [{:keys [harmonics frequency wave]}]
   (let [harray (clj->js harmonics)
         c (count harmonics)
-        period (:period frequency)
+        period (or (:period frequency)
+                   (/ 100 (:frequency frequency)))
         wfn (partial (get-method wavefn (:form wave)) wave)]
     (fn add
       ([x]

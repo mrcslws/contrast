@@ -1,4 +1,4 @@
-(ns contrast.pages.index
+(ns contrast.pages.crafting-graphs
   (:require [cljs.core.async :refer [put! chan mult tap close! <!]]
             [contrast.components.fixed-table :refer [fixed-table-component]]
             [contrast.components.state-display :refer [state-display-component]]
@@ -15,7 +15,7 @@
 
 (defonce roots
   (atom
-   {"1-twosides" [(fn [] shared/single-gradient) :single-sinusoidal-gradient]
+   {"simple-grating" [(fn [] shared/simple-grating) :simple-grating]
     "2-sweep-grating" [(fn [] shared/sweep-grating) :sweep-grating]
     "3-harmonic-grating" [(fn [] shared/harmonic-grating) :harmonic-grating]
     "4-drag-and-inspect" [(fn [] shared/drag-and-inspect) :drag-and-inspect]}))
@@ -114,23 +114,22 @@
 (defonce initialize-state
   (swap! state/app-state merge
          {:hood-open? false
-          :inspectors {:single-sinusoidal-gradient {:color-inspect {:selected-color nil}
-                                                    :row-inspect {:is-tracking? false
-                                                                  :locked {:probed-row 30}}}
-                       :sweep-grating {:color-inspect {:selected-color nil}
+          :inspectors {:sweep-grating {:color-inspect {:selected-color nil}
                                        :row-inspect {:is-tracking? false
                                                      :locked {:probed-row 30}}}
                        :harmonic-grating {:color-inspect {:selected-color nil}}
                        :drag-and-inspect {:color-inspect {:selected-color nil}
                                           :row-inspect {:is-tracking? false
                                                         :locked {:probed-row 30}}}}
-          :figures {:single-sinusoidal-gradient {:width 500
-                                                 :height 256
-                                                 :transition {:radius 250}
-                                                 :spectrum {:left {:color [0 0 0]
-                                                                   :position -1}
-                                                            :right {:color [255 255 255]
-                                                                    :position 1}}}
+          :figures {:simple-grating {:width 500
+                                     :height 256
+                                     :frequency {:frequency 2.2}
+                                     :spectrum {:left {:color [127 127 127]
+                                                       :position -1}
+                                                :right {:color [191 191 191]
+                                                        :position 1}}
+                                     :wave {:form :sine}
+                                     :harmonics [1]}
                     :sweep-grating {:width 500
                                     :height 256
                                     :wave {:form :sine}
