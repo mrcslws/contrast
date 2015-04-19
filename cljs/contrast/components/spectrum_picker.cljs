@@ -30,18 +30,18 @@
 
     om/IInitState
     (init-state [_]
-      {:mousedown (chan)
+      {:pointerdown (chan)
        :locked-position nil
        :invokes (chan)
        :blurs (chan)})
 
     om/IWillMount
     (will-mount [_]
-      (let [{:keys [target-width mousedown]} (om/get-state owner)
+      (let [{:keys [target-width pointerdown]} (om/get-state owner)
             started (chan)
             progress (chan)
             finished (chan)]
-        (drag/watch mousedown started progress finished)
+        (drag/watch pointerdown started progress finished)
 
         (go-loop []
           (when-let [_ (<! started)]
@@ -68,7 +68,7 @@
           (recur))))
 
     om/IRenderState
-    (render-state [_ {:keys [target-width mousedown focused invokes blurs]}]
+    (render-state [_ {:keys [target-width pointerdown focused invokes blurs]}]
       (let [knobw (if focused 46 12)]
         (dom/div #js {:style #js {:position "absolute"
                                   :left (knobpos->left
@@ -76,8 +76,15 @@
                  (dom/div #js {:onMouseDown (fn [e]
                                               (.persist e)
                                               (.preventDefault e)
-                                              (put! mousedown e)
+                                              (put! pointerdown e)
                                               nil)
+                               :onTouchStart (fn [e]
+                                               (.persist e)
+                                               (.preventDefault e)
+                                               (put! pointerdown (-> e
+                                                                   .-touches
+                                                                   (aget 0)))
+                                               nil)
                                :onClick (fn [e]
                                           (when-not focused
                                             (om/set-state! owner :focused true)

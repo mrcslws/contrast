@@ -46,7 +46,6 @@
                       :ref "input"
                       :className "no-wrapper"
                       :onChange #(handle-change % target schema owner)
-                      :onLoad #(js/alert "yeah!")
                       :onBlur #(when blurs
                                  (put! blurs :blurred))
 

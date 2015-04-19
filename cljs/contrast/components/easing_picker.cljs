@@ -130,11 +130,20 @@
                                       (.preventDefault e)
                                       (put! mousedown e)
                                       nil)
+                       :onTouchStart (fn [e]
+                                       (.persist e)
+                                       (.preventDefault e)
+                                       (put! mousedown (-> e
+                                                           .-touches
+                                                           (aget 0)))
+                                       nil)
                        :style #js {:cursor "pointer"
                                    :position "absolute"
+                                   :padding 15
+                                   :margin -15
                                    :left (progress/p->int plot-xp 0 (dec w))
                                    :top (progress/p->int plot-yp 0 (dec h))}}
-                  (background-image "images/SliderKnob.png" 13 13 -6 -6)))))))
+                  (background-image "images/SliderKnob.png" 13 13 8 8)))))))
 
 ;; TODO These axes need to stop implying a (0,0).
 ;; Move them outward.
