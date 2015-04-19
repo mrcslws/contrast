@@ -32,6 +32,12 @@
     [(.-left r)
      (.-top r)]))
 
+(defn on-exit [owner]
+  (when (om/get-state owner :entered?)
+    (om/set-state-nr! owner :entered? false)
+    (when-let [exits (om/get-state owner :exits)]
+      (put! exits :exit))))
+
 ;; One handler to rule them all.
 ;; Mouse-moves are sometimes outside the boundary because the knob follows
 ;; the mouse, similar to the ice staircase in "Let It Go".
@@ -56,14 +62,10 @@
         (om/set-state-nr! owner :entered? true)
         (when-let [moves (om/get-state owner :moves)]
           (put! moves [x y])))
-      (when (om/get-state owner :entered?)
-        (om/set-state-nr! owner :entered? false)
-        (when-let [exits (om/get-state owner :exits)]
-          (put! exits [x y])))))
+      (on-exit owner)))
   nil)
 
-(defn click-handler [evt owner]
-  (move-handler evt owner)
+(defn click-handler [owner]
   (when-let [clicks (om/get-state owner :clicks)]
     ;; The `on-click` should not care about the [x y].
     ;; Handle that in the `on-move`.
@@ -76,6 +78,14 @@
                                   :height 0
                                   :width 0
                                   :position "absolute"))}))
+
+(defn touch-to-mouse-move [e owner]
+  (let [touches (-> e .-touches)]
+    (when (= 1 (.-length touches))
+      (.preventDefault e)
+      (move-handler (-> e
+                        .-touches
+                        (aget 0)) owner))))
 
 (defn tracking-area-component [_ owner]
   (reify
@@ -90,14 +100,20 @@
                     :className "TrackingArea"
                     :onMouseEnter #(move-handler % owner)
                     :onMouseMove #(move-handler % owner)
+                    :onTouchStart #(touch-to-mouse-move % owner)
+                    :onTouchMove #(touch-to-mouse-move % owner)
                     :onMouseOut #(move-handler % owner)
-                    :onClick #(click-handler % owner)
+                    :onClick (fn [e]
+                               (move-handler e owner)
+                               (click-handler owner))
+                    :onTouchEnd (fn [e]
+                                  (click-handler owner)
+                                  (on-exit owner))
                     :style #js {;; TODO convince self that this is acceptable
                                 :display (if determine-width-from-contents?
                                            "inline-block"
                                            "block")
                                 :height "100%"
-
 
                                 ;; TODO explain and test
                                 :verticalAlign "top"
